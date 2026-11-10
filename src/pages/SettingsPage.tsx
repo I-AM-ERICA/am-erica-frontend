@@ -1,0 +1,9 @@
+import { Save, Store } from 'lucide-react'
+import { useState } from 'react'
+import type { StoreProfile } from '../types'
+import { isLiveMode } from '../services/assistant'
+
+export default function SettingsPage({ profile, onSave }: { profile: StoreProfile; onSave: (profile: StoreProfile) => void }) {
+  const [draft, setDraft] = useState(profile)
+  return <><div className="page-heading"><p className="eyebrow">우리 가게를 조금 더 알려 주세요</p><h1>가게 설정</h1><p>비서들이 사장님의 가게를 이해할 수 있도록 기본 정보를 입력해 주세요.</p></div><div className="settings-grid"><form className="panel settings-form" onSubmit={(event) => { event.preventDefault(); onSave({ name: draft.name.trim(), owner: draft.owner.trim(), category: draft.category.trim(), region: draft.region.trim() }) }}><div className="section-heading"><h2>우리 가게 정보</h2><Store size={19} /></div>{([{ key: 'name', label: '가게 이름', placeholder: '예: 오후의 커피' }, { key: 'owner', label: '사장님 이름', placeholder: '예: 김가게' }, { key: 'category', label: '업종', placeholder: '예: 카페, 음식점, 소매점' }, { key: 'region', label: '가게 소재지', placeholder: '예: 서울 마포구' }] as const).map((field) => <div key={field.key}><label htmlFor={`store-${field.key}`}>{field.label}</label><input id={`store-${field.key}`} value={draft[field.key]} placeholder={field.placeholder} required maxLength={40} pattern=".*\S.*" onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })} /></div>)}<button className="primary-button" type="submit"><Save size={15} />가게 정보 저장</button><p className="input-caption">정보는 이 브라우저에 저장됩니다.</p></form><div className="panel settings-info"><h2>비서 연결 상태</h2><span className="connection-state"><i />{isLiveMode ? 'FastAPI 연결 모드' : '체험 모드'}</span><p>{isLiveMode ? '각 비서의 요청을 연결된 FastAPI 서버로 전달합니다. 실제 연결 상태는 요청 시 확인합니다.' : '지금은 예시 템플릿과 데이터로 비서를 체험할 수 있어요. 입력한 매출 CSV의 합계와 피크타임은 실제로 계산합니다.'}</p><p>정책 공고의 자격과 접수 기한은 반드시 공식 안내를 확인해 주세요. 고객 답변과 홍보 문안은 직접 검토하고 사용해 주세요.</p></div></div></>
+}

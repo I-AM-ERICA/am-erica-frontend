@@ -1,0 +1,49 @@
+.setup-page { min-height: 100dvh; background: #f7f8f5; }
+.setup-header { display: flex; align-items: center; gap: 22px; padding: 28px 4%; max-width: 1600px; margin: 0 auto; }
+.setup-back { padding: 12px; border-right: 1px solid #dfe5d8; padding-right: 26px; color: #78846d; }
+.setup-step { margin-left: auto; color: #87937a; font-size: 14px; }
+.setup-main { max-width: 1440px; margin: 0 auto; padding: 15px 4% 60px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 5%; align-items: center; }
+.setup-card { background: white; padding: clamp(30px, 4.5vw, 65px); border: 1px solid #e8ece2; box-shadow: 0 15px 50px #293f3010; border-radius: 12px; }
+.setup-eyebrow { font-size: 15px; color: #73856a; margin-bottom: 18px; }
+.setup-card h1 { font-size: clamp(29px, 3vw, 41px); line-height: 1.5; letter-spacing: -1.6px; }
+.setup-description { font-size: 15px; color: #77816f; line-height: 1.9; margin: 18px 0 27px; }
+.business-options { border: 0; margin: 0 0 27px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.business-option { min-height: 58px; position: relative; display: flex; align-items: center; gap: 9px; border: 1px solid #dfe5d8; border-radius: 6px; padding: 15px 12px; font-size: 14px; color: #56664e; cursor: pointer; }
+.business-option > input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; margin: 0; }
+.business-option:has(input:focus-visible) { outline: 2px solid #658457; outline-offset: 3px; }
+.business-option:hover { border-color: #9aad8b; background: #fafcf7; }
+.business-option.selected { border-color: #3d6449; background: #eef4e8; color: #315c3d; font-weight: 700; box-shadow: inset 0 0 0 1px #3d6449; }
+.option-check { margin-left: auto; }
+.business-name-label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.business-name-label > span { font-size: 12px; font-weight: 400; color: #8f9a83; margin-left: 5px; }
+.setup-card input#business-name { font-size: 16px; min-height: 50px; padding: 14px; }
+.setup-continue { margin-top: 26px; min-height: 56px; padding: 16px 20px; display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; background: #2e523e; color: white; border-radius: 6px; font-size: 16px; font-weight: 700; }
+.setup-continue:hover:not(:disabled) { background: #203e2d; }
+.setup-continue:disabled { color: #9ba494; background: #ebeee7; cursor: not-allowed; opacity: 1; }
+.setup-storage-note { color: #929d87; text-align: center; font-size: 12px; line-height: 1.8; margin-top: 16px; }
+.setup-visual { align-self: stretch; display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 24px 0; }
+.setup-visual-intro { font-size: 24px; line-height: 1.8; color: #8a987e; letter-spacing: -.7px; margin-left: 5%; margin-bottom: 36px; }
+.setup-visual-intro strong { color: #59714d; font-weight: 700; }
+.shop-mosaic { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 5px 12px 35px; }
+.shop-poster { border: 6px solid white; box-shadow: 0 12px 28px #384a2b16; padding: 20px 17px 16px; min-height: 234px; position: relative; transition: transform .2s; border-radius: 3px; }
+.shop-poster:nth-child(even) { transform: translateY(30px); }
+.shop-poster.highlighted { outline: 2px solid #6f8960; outline-offset: 6px; }
+.poster-cafe { background: #e8ddc6; color: #7c674b; }
+.poster-restaurant { background: #e2e9d6; color: #63764e; }
+.poster-beauty { background: #e9e0e8; color: #8c6d85; }
+.poster-retail { background: #dae7e9; color: #5e7d80; }
+.poster-category { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+.shop-poster > strong { display: block; font-size: 18px; line-height: 1.7; letter-spacing: -.6px; max-width: 140px; margin-top: 8px; }
+.poster-shop { position: relative; height: 95px; max-width: 140px; margin: 18px auto 13px; border: 1.5px solid currentColor; border-top: 0; }
+.poster-roof { height: 10px; border: 1.5px solid currentColor; transform: perspective(50px) rotateX(20deg); background: #ffffff30; position: absolute; left: -5px; right: -5px; top: -8px; }
+.poster-awning { display: flex; position: absolute; left: -4px; right: -4px; top: 1px; }
+.poster-awning > i { background: currentColor; height: 17px; flex: 1; border-radius: 0 0 6px 6px; opacity: .6; }
+.poster-awning > i:nth-child(even) { opacity: .15; }
+.poster-window { position: absolute; left: 11px; top: 30px; width: 52%; height: 48px; border: 1px solid currentColor; display: grid; place-items: center; }
+.poster-door { position: absolute; right: 10px; top: 30px; width: 23%; height: 64px; border: 1px solid currentColor; background: #ffffff25; }
+.poster-door::after { content: ''; position: absolute; width: 3px; height: 3px; border-radius: 50%; background: currentColor; top: 35px; left: 5px; }
+.poster-caption { font-size: 8px; letter-spacing: 1px; display: block; text-align: center; opacity: .7; }
+.setup-visual-note { font-size: 13px; color: #87977b; line-height: 1.9; margin: 26px 5% 0; text-align: center; }
+@media (max-width: 1100px) { .setup-main { gap: 4%; grid-template-columns: 1.15fr 1fr; } .setup-card { padding: 32px; } .business-option { font-size: 12px; gap: 6px; padding: 13px 10px; } .business-option > svg { width: 18px; } .shop-mosaic { gap: 15px; } .shop-poster { padding: 16px 11px 13px; min-height: 220px; } .shop-poster > strong { font-size: 16px; } .setup-visual-intro { font-size: 22px; } }
+@media (max-width: 800px) { .setup-main { max-width: 620px; grid-template-columns: 1fr; padding: 12px 22px 40px; } .setup-card { padding: 35px; } .setup-visual { display: none; } .setup-header { padding: 20px 22px; } .business-option { font-size: 14px; padding: 15px 12px; } .setup-card h1 { font-size: 36px; } }
+@media (max-width: 440px) { .setup-main { padding: 8px 16px 28px; } .setup-card { padding: 27px 21px; } .setup-header { padding: 18px 16px; gap: 15px; } .setup-back { padding-left: 0; padding-right: 16px; } .setup-step { display: none; } .setup-card h1 { font-size: 31px; } .setup-description { font-size: 14px; } .business-option { font-size: 12px; gap: 6px; padding: 14px 10px; } .business-option > svg { width: 17px; } .business-options { gap: 9px; } .option-check { width: 14px !important; } }

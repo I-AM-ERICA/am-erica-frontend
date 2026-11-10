@@ -1,0 +1,13 @@
+.header { min-height: 88px; border-bottom: 1px solid var(--border); background: white; display: flex; align-items: center; gap: 28px; padding: 20px max(30px, calc((100vw - 1160px) / 2)); }
+.workspace-brand { display: inline-flex; align-items: center; gap: 9px; color: #294c3b; font-size: 25px; font-weight: 800; letter-spacing: -1.2px; white-space: nowrap; }
+.workspace-brand > span { color: #bf9d69; margin-left: -8px; }
+.header-store { border-left: 1px solid #e4e8dd; padding-left: 27px; display: flex; align-items: center; gap: 12px; font-size: 14px; min-width: 0; }
+.header-store > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 175px; }
+.header-store > small { font-size: 11px; color: #849477; border-bottom: 1px solid #cbd5c0; white-space: nowrap; }
+.header-actions { display: flex; gap: 24px; margin-left: auto; }
+.header-tool { display: inline-flex; align-items: center; gap: 7px; color: #718167; font-size: 13px; min-height: 44px; white-space: nowrap; }
+.header-tool:hover { color: #2e523e; }
+.icon-button { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 5px; color: #718167; }
+.icon-button:hover { background: #f2f5ec; }
+@media (max-width: 850px) { .header { gap: 20px; padding: 18px 25px; } .header-actions { gap: 17px; } .header-tool > span { display: none; } .header-tool { width: 35px; justify-content: center; } .header-store { padding-left: 20px; } }
+@media (max-width: 550px) { .header { padding: 16px 20px; min-height: 76px; flex-wrap: wrap; gap: 0 16px; } .workspace-brand { font-size: 23px; } .workspace-brand > svg { width: 25px; } .header-actions { gap: 8px; } .header-store { order: 3; padding: 13px 0 0; width: 100%; border: 0; font-size: 13px; gap: 10px; } .header-store > small { font-size: 11px; } }

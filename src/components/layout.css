@@ -1,0 +1,13 @@
+.app-shell { min-height: 100dvh; background: #f7f8f4; }
+.workspace-nav-wrap { background: white; border-bottom: 1px solid var(--border); }
+.workspace-nav { max-width: 1160px; margin: 0 auto; padding: 0 30px; display: flex; gap: 28px; }
+.workspace-nav > button { display: inline-flex; align-items: center; gap: 8px; min-height: 59px; position: relative; font-size: 15px; color: #88947e; padding: 18px 4px; }
+.workspace-nav > button.active { color: #315c3c; font-weight: 800; }
+.workspace-nav > button.active::after { position: absolute; content: ''; height: 3px; background: #4e7040; bottom: -1px; left: 0; right: 0; }
+.workspace-nav > button.introduction-link { margin-left: auto; font-size: 13px; }
+.main-content { max-width: 1160px; padding: 37px 30px 20px; margin: 0 auto; }
+.main-content > main { min-height: calc(100dvh - 280px); animation: enter .2s ease-out; }
+.main-content > .footer { margin-top: 28px; font-size: 12px; color: #86947a; }
+@keyframes enter { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 650px) { .main-content { padding: 27px 20px 15px; } .workspace-nav { padding: 0 20px; gap: 24px; } .workspace-nav > button { min-height: 55px; font-size: 14px; } .workspace-nav > button.introduction-link { font-size: 12px; gap: 5px; } .workspace-nav .introduction-link > svg { display: none; } .main-content > .footer { margin-top: 20px; font-size: 11px; } }
+@media (max-width: 350px) { .workspace-nav { gap: 16px; } .workspace-nav > button { font-size: 13px; } .workspace-nav > button.introduction-link { font-size: 11px; } }

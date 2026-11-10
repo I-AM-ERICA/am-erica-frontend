@@ -1,0 +1,22 @@
+.modal { width: min(640px, calc(100% - 32px)); max-height: calc(100dvh - 60px); padding: 0; border: 1px solid var(--border); border-radius: 12px; color: var(--text); box-shadow: 0 24px 100px #182e3033; background: white; }
+.modal::backdrop { background: #1b2d265c; backdrop-filter: blur(3px); }
+.modal-inner { padding: 27px; }
+.modal-heading { display: flex; align-items: center; gap: 18px; justify-content: space-between; margin-bottom: 24px; }
+.modal-heading h2 { font-size: 18px; letter-spacing: -.5px; line-height: 1.6; }
+.modal-heading > button { flex-shrink: 0; }
+.guide-intro { font-size: 14px; line-height: 1.9; color: var(--muted); margin-bottom: 22px; }
+.guide-item { display: flex; align-items: flex-start; gap: 15px; padding: 15px 0; border-top: 1px solid var(--border); }
+.guide-item h3 { font-size: 14px; margin-bottom: 8px; }
+.guide-item p { font-size: 13px; color: var(--muted); line-height: 1.9; }
+.guide-item > .assistant-icon { width: 36px; height: 36px; border-radius: 8px; }
+.guide-note { padding: 15px; background: #f6f8f0; font-size: 12px; color: #8a957c; line-height: 1.9; margin-top: 17px; border-radius: 5px; }
+.activity-content { white-space: pre-wrap; font-family: inherit; font-size: 14px; line-height: 2; padding: 20px; background: #f8faf3; border-radius: 6px; max-height: 50vh; overflow-y: auto; word-break: break-word; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.search-input { margin-bottom: 18px; }
+.search-result { width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px 7px; border-bottom: 1px solid var(--border); text-align: left; }
+.search-result:hover { background: #f9fbf5; }
+.search-result > span:last-child { min-width: 0; }
+.search-result strong { font-size: 14px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-result small { display: block; color: var(--muted); font-size: 12px; margin-top: 7px; }
+.search-section-label { font-size: 12px; color: #a0aa92; margin: 22px 0 4px; }
+@media (max-width: 700px) { .modal-inner { padding: 21px; } .modal-heading h2 { font-size: 16px; } }
