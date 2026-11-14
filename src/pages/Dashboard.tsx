@@ -1,7 +1,11 @@
 import { ArrowRight, ChevronRight, CircleHelp, Store } from 'lucide-react'
+import { useContext } from 'react'
+import StaffAvatar from '../components/StaffAvatar'
+import { StaffPreferencesContext } from '../services/staff'
+import type { StaffGender } from '../services/staff'
 import { assistants, getAssistant } from '../data'
-import type { Activity, PageId, StoreProfile } from '../types'
-import './dashboard.css'
+import type { Activity, AssistantId, PageId, StoreProfile } from '../types'
+import './styles/dashboard.css'
 
 interface DashboardProps {
   profile: StoreProfile
@@ -9,16 +13,18 @@ interface DashboardProps {
   onNavigate: (page: PageId) => void
   onActivity: (activity: Activity) => void
   onGuide: () => void
+  onStaffGenderChange: (id: AssistantId, gender: StaffGender) => void
 }
 
 const actions = [
-  { title: '지원 정책 찾기', description: '우리 가게에 필요한 지원 정책을 알아보세요.', button: '정책 알아보기' },
-  { title: '가게 홍보하기', description: '가게 소식을 전할 홍보 문안을 준비해요.', button: '홍보 문안 만들기' },
-  { title: '고객에게 답장하기', description: '리뷰와 문의에 정성스러운 답변을 준비해요.', button: '답변 작성하기' },
-  { title: '매출 분석하기', description: '매출 파일을 넣고 가게의 흐름을 살펴보세요.', button: '매출 살펴보기' },
+  { title: '지원 정책 찾기', button: '정책 알아보기' },
+  { title: '가게 홍보하기', button: '카드뉴스 만들기' },
+  { title: '리뷰 답글 작성하기', button: '리뷰 답글 만들기' },
+  { title: '매출 분석하기', button: '매출 살펴보기' },
 ]
 
-export default function Dashboard({ profile, activities, onNavigate, onActivity, onGuide }: DashboardProps) {
+export default function Dashboard({ profile, activities, onNavigate, onActivity, onGuide, onStaffGenderChange }: DashboardProps) {
+  const staffPreferences = useContext(StaffPreferencesContext)
   const recent = activities.filter((activity) => activity.createdAt).slice(0, 2)
   return (
     <div className="simple-dashboard">
@@ -28,16 +34,24 @@ export default function Dashboard({ profile, activities, onNavigate, onActivity,
         <p>필요한 일을 고르면, 비서가 차근차근 도와드릴게요.</p>
       </div>
       <section className="simple-assistant-grid" aria-label="우리 가게 비서 선택">
-        {assistants.map(({ id, name, color, icon: Icon }, index) => (
-          <button className="simple-assistant-card" key={id} onClick={() => onNavigate(id)}>
-            <span className={`assistant-icon ${color}`}><Icon size={28} strokeWidth={1.6} /></span>
-            <div className="simple-assistant-copy">
-              <span className="simple-assistant-name">{name}</span>
-              <h2>{actions[index].title}</h2>
-              <p>{actions[index].description}</p>
-              <span className="simple-assistant-action">{actions[index].button}<ArrowRight size={17} /></span>
+        {assistants.map(({ id, name }, index) => (
+          <article className="simple-assistant-card" key={id}>
+            <a className="simple-assistant-open" href={`#${id}`} onClick={(event) => { event.preventDefault(); onNavigate(id) }}>
+              <StaffAvatar id={id} />
+              <div className="simple-assistant-copy">
+                <h2>{name}</h2>
+                <p>{actions[index].title}</p>
+                <span className="simple-assistant-action">{actions[index].button}<ArrowRight size={17} /></span>
+              </div>
+            </a>
+            <div className="staff-gender-controls" role="group" aria-label={`${name} 스태프 성별`}>
+              <span className="staff-gender-label">스태프 선택</span>
+              <div className="staff-gender-options">
+                <button type="button" aria-pressed={staffPreferences[id] === 'boy'} onClick={() => onStaffGenderChange(id, 'boy')}>남성</button>
+                <button type="button" aria-pressed={staffPreferences[id] === 'girl'} onClick={() => onStaffGenderChange(id, 'girl')}>여성</button>
+              </div>
             </div>
-          </button>
+          </article>
         ))}
       </section>
       {recent.length > 0 && (
@@ -46,8 +60,7 @@ export default function Dashboard({ profile, activities, onNavigate, onActivity,
           <div className="panel">
             {recent.map((activity) => {
               const assistant = getAssistant(activity.assistant)
-              const Icon = assistant.icon
-              return <button className="simple-recent-row" key={activity.id} onClick={() => onActivity(activity)}><span className={`assistant-icon ${assistant.color}`}><Icon size={19} /></span><span><strong>{activity.title}</strong><small>{assistant.name}</small></span><ChevronRight size={18} /></button>
+              return <button className="simple-recent-row" key={activity.id} onClick={() => onActivity(activity)}><StaffAvatar id={activity.assistant} /><span><strong>{activity.title}</strong><small>{assistant.name}</small></span><ChevronRight size={18} /></button>
             })}
           </div>
         </section>

@@ -67,11 +67,11 @@ test('first visits show the introduction and protect unconfigured assistant rout
   const { readRoute, resolveRoute } = await server.ssrLoadModule('/src/services/navigation.ts')
   assert.equal(readRoute(''), 'intro')
   assert.equal(readRoute('#unknown'), 'intro')
-  assert.equal(resolveRoute(readRoute('#dashboard'), false), 'setup')
-  assert.equal(resolveRoute(readRoute('#policy'), false), 'setup')
-  assert.equal(resolveRoute(readRoute('#dashboard'), true), 'dashboard')
-  assert.equal(resolveRoute(readRoute('#setup'), true), 'setup')
-  assert.equal(resolveRoute(readRoute('#intro'), true), 'intro')
+  assert.equal(resolveRoute(readRoute('#dashboard'), false, true), 'setup')
+  assert.equal(resolveRoute(readRoute('#policy'), false, true), 'setup')
+  assert.equal(resolveRoute(readRoute('#dashboard'), true, true), 'dashboard')
+  assert.equal(resolveRoute(readRoute('#setup'), true, true), 'setup')
+  assert.equal(resolveRoute(readRoute('#intro'), true, true), 'intro')
 })
 
 test('introduction offers a start action and industry selection requires a choice', async () => {

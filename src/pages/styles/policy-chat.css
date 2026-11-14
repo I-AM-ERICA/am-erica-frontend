@@ -1,0 +1,92 @@
+.policy-chat { height: max(580px, calc(100dvh - 220px)); max-height: 1100px; display: flex; flex-direction: column; max-width: 960px; margin: 0 auto; background: #fff; border: 1px solid #e2e8dc; border-radius: 16px; overflow: hidden; }
+.policy-chat-header { display: flex; align-items: center; gap: 13px; padding: 19px 24px; border-bottom: 1px solid #edf0e8; flex-shrink: 0; }
+.policy-chat-back { display: grid; place-items: center; width: 36px; height: 44px; color: #76866d; }
+.policy-chat-heading { min-width: 0; flex: 1; }
+.policy-chat-heading h1 { font-size: 19px; letter-spacing: -.5px; }
+.policy-chat-heading p { font-size: 12px; color: #7b8872; line-height: 1.6; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.policy-new-chat { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 13px; border: 1px solid #e1e7db; border-radius: 7px; font-size: 13px; color: #4f6944; white-space: nowrap; }
+.policy-new-chat:hover:not(:disabled) { background: #f3f6ee; }
+.policy-transcript { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 32px 30px; scrollbar-gutter: stable; }
+.policy-chat-empty { max-width: 640px; margin: 20px auto; text-align: center; }
+.policy-chat-empty > .staff-avatar { width: 86px; height: 86px; border-radius: 24px; margin: 0 auto 24px; }
+.policy-chat-eyebrow { font-size: 12px; color: #7c8e6d; margin-bottom: 12px; }
+.policy-chat-empty h2 { font-size: clamp(24px, 3vw, 31px); letter-spacing: -1px; }
+.policy-chat-empty h2 + p { font-size: 14px; line-height: 1.9; color: #7b8872; margin-top: 17px; }
+.policy-suggestions { display: flex; flex-direction: column; gap: 9px; max-width: 470px; margin: 28px auto 0; }
+.policy-suggestions button { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 14px 17px; border: 1px solid #e5eadd; border-radius: 10px; font-size: 13px; line-height: 1.6; color: #5a714c; }
+.policy-suggestions button:hover { background: #f4f7ef; border-color: #c4d1b9; }
+.policy-suggestions svg { transform: rotate(45deg); }
+.policy-message-list { max-width: 790px; margin: 0 auto; }
+.policy-message { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 28px; }
+.policy-message > .staff-avatar { width: 44px; height: 44px; border-radius: 50%; }
+.policy-message-body { min-width: 0; max-width: 100%; }
+.policy-message-user { justify-content: flex-end; }
+.policy-message-user .policy-message-body { max-width: 85%; border-radius: 16px 16px 4px 16px; padding: 13px 18px; background: #edf3e7; color: #334b2c; }
+.policy-message-assistant .policy-message-body { flex: 1; padding-top: 6px; }
+.policy-message-author { font-size: 13px; font-weight: 700; color: #4f6d42; margin-bottom: 12px; }
+.policy-message-author span { margin-left: 9px; font-weight: 400; font-size: 11px; color: #8a917e; }
+.policy-message-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.95; font-size: 15px; }
+.policy-thinking { display: flex; align-items: center; gap: 4px; margin-top: 10px; color: #8b9980; }
+.policy-thinking i { width: 5px; height: 5px; background: #93a987; border-radius: 50%; animation: policy-pulse 1.2s infinite ease-in-out; }
+.policy-thinking i:nth-child(2) { animation-delay: .15s; }
+.policy-thinking i:nth-child(3) { animation-delay: .3s; }
+.policy-thinking > span { margin-left: 7px; font-size: 12px; }
+@keyframes policy-pulse { 0%, 80%, 100% { opacity: .35; } 40% { opacity: 1; } }
+.policy-message-note { color: #839078; font-size: 12px; line-height: 1.8; margin: 10px 0; }
+.policy-message-error { font-size: 13px; color: #a8553a; background: #fff6f1; border-radius: 8px; padding: 12px 14px; line-height: 1.8; margin-top: 12px; }
+.policy-message-actions { display: flex; gap: 18px; margin-top: 10px; }
+.policy-message-actions button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: #839078; font-size: 12px; }
+.policy-message-actions button:hover { color: #315b3b; }
+.policy-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 17px; }
+.policy-sources strong { width: 100%; font-size: 12px; color: #79886f; margin-bottom: 2px; }
+.policy-sources a { display: inline-flex; align-items: center; gap: 7px; background: #f5f7f1; border: 1px solid #e4eadc; border-radius: 7px; padding: 8px 10px; font-size: 12px; color: #527147; overflow-wrap: anywhere; }
+.policy-sources a:hover { border-color: #9ab28b; }
+.policy-composer-wrap { flex-shrink: 0; padding: 10px 30px 18px; background: #fff; }
+.policy-composer { display: flex; align-items: flex-end; gap: 12px; border: 1px solid #dce5d3; box-shadow: 0 3px 16px #334d2c07; border-radius: 15px; padding: 12px 13px 12px 18px; }
+.policy-composer:focus-within { border-color: #8aa27b; }
+.policy-composer textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; min-height: 44px; max-height: 160px; padding: 10px 0; font-size: 15px; line-height: 1.6; outline: none; color: #30392e; }
+.policy-composer textarea::placeholder { color: #97a08f; }
+.policy-send { display: grid; place-items: center; background: #31543e; color: white; width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px; }
+.policy-send:hover:not(:disabled) { background: #21412e; }
+.policy-send:disabled { background: #e4eadd; color: #97a28c; cursor: default; opacity: 1; }
+.policy-composer-hint { display: flex; justify-content: space-between; gap: 12px; margin: 9px 3px 0; font-size: 10px; color: #919b88; }
+.policy-chat-disclaimer { text-align: center; color: #919b88; font-size: 11px; margin-top: 12px; line-height: 1.6; }
+@media (max-width: 650px) {
+  .policy-chat { height: max(530px, calc(100dvh - 185px)); border-radius: 11px; }
+  .policy-chat-header { padding: 12px 10px; gap: 8px; }
+  .policy-chat-header > .staff-avatar { width: 35px; height: 35px; }
+  .policy-chat-heading h1 { font-size: 17px; }
+  .policy-chat-heading p { font-size: 10px; }
+  .policy-new-chat { width: 40px; padding: 9px; }
+  .policy-new-chat span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .policy-chat-back { width: 28px; }
+  .policy-transcript { padding: 23px 14px; }
+  .policy-chat-empty { margin-top: 6px; }
+  .policy-chat-empty > .staff-avatar { width: 66px; height: 66px; margin-bottom: 18px; }
+  .policy-message { gap: 8px; }
+  .policy-message > .staff-avatar { width: 36px; height: 36px; }
+  .policy-message-text { font-size: 14px; }
+  .policy-message-user .policy-message-body { max-width: 90%; padding: 11px 14px; }
+  .policy-composer-wrap { padding: 9px 12px 13px; }
+  .policy-composer { gap: 8px; padding: 9px 10px 9px 13px; }
+  .policy-composer textarea { font-size: 16px; }
+  .policy-composer-hint > span:first-child { display: none; }
+  .policy-composer-hint { justify-content: flex-end; }
+  .policy-chat-disclaimer { font-size: 10px; }
+}
+
+.policy-reminder { padding: 14px 24px; background: #f7f9f3; border-bottom: 1px solid #e2e8dc; flex-shrink: 0; }
+.policy-reminder-main { display: flex; align-items: center; gap: 12px; color: #4f6944; }
+.policy-reminder-copy { flex: 1; min-width: 0; }
+.policy-reminder-copy strong { font-size: 13px; }
+.policy-reminder-copy strong span { font-size: 11px; font-weight: 400; color: #73836b; margin-left: 5px; }
+.policy-reminder-copy p, .policy-reminder-status p { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.policy-reminder-copy p { margin-top: 4px; }
+.policy-reminder-status { color: #73836b; margin: 7px 0 0 30px; }
+.policy-reminder-switch { min-width: 65px; min-height: 44px; border-radius: 24px; padding: 8px 13px; background: #e2e7dd; color: #53624c; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.policy-reminder-switch[aria-checked="true"] { background: #4f6944; color: #fff; }
+.policy-reminder-switch:disabled { opacity: .6; cursor: wait; }
+.policy-reminder-switch:focus-visible, .policy-reminder-error button:focus-visible { outline: 2px solid #4f6944; outline-offset: 3px; }
+.policy-reminder-error { margin-top: 8px; color: #a34c3e; font-size: 12px; line-height: 1.6; }
+.policy-reminder-error button { display: inline-flex; gap: 5px; align-items: center; min-height: 32px; text-decoration: underline; }
+@media (max-width: 600px) { .policy-reminder { padding: 12px 14px; } .policy-reminder-main { gap: 8px; } .policy-reminder-main > svg { display: none; } .policy-reminder-status { margin-left: 0; } }

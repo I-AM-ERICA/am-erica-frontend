@@ -1,6 +1,6 @@
 export type AssistantId = 'policy' | 'marketing' | 'customer' | 'sales'
 export type PageId = 'dashboard' | AssistantId | 'history' | 'settings'
-export type AppPage = 'intro' | 'setup' | PageId
+export type AppPage = 'intro' | 'login' | 'setup' | PageId
 
 export interface Activity {
   id: string
@@ -9,6 +9,7 @@ export interface Activity {
   description: string
   createdAt: string
   content: string
+  imageUrl?: string
 }
 
 export interface StoreProfile {

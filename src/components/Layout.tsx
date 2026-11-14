@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { PageId, StoreProfile } from '../types'
 import Header from './Header'
 import Footer from './Footer'
-import './layout.css'
+import '../pages/styles/layout.css'
 
 interface LayoutProps {
   children: ReactNode

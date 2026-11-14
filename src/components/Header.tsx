@@ -1,6 +1,6 @@
 import { CircleHelp, Search, Settings, Store } from 'lucide-react'
 import type { StoreProfile } from '../types'
-import './header.css'
+import '../pages/styles/header.css'
 
 interface HeaderProps {
   profile: StoreProfile

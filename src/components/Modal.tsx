@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import './modal.css'
+import '../pages/styles/modal.css'
 
 export default function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)

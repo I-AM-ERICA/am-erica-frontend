@@ -4,7 +4,7 @@ import '@fontsource/nanum-gothic/400.css'
 import '@fontsource/nanum-gothic/700.css'
 import '@fontsource/nanum-gothic/800.css'
 import App from './App'
-import './styles/global.css'
+import './pages/styles/global.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

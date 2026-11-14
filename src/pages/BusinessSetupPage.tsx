@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Check, Coffee, Flower2, Scissors, ShoppingBag, S
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { StoreProfile } from '../types'
-import './business-setup.css'
+import './styles/business-setup.css'
 
 const categories = [
   { name: '카페·베이커리', icon: Coffee, note: '커피 한 잔의 여유를 파는 곳', short: '오늘도, 따뜻한 한 잔', className: 'cafe' },

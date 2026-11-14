@@ -25,7 +25,7 @@ textarea::placeholder, input::placeholder { color: #b1b7a7; }
 .workspace-result .section-heading { min-height: 32px; }
 .result-actions { display: flex; gap: 3px; }
 .result-placeholder { min-height: 440px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.result-placeholder-icon { width: 83px; height: 83px; border-radius: 22px; display: grid; place-items: center; margin-bottom: 24px; }
+.staff-avatar.result-placeholder-icon { width: 83px; height: 83px; border-radius: 22px; display: grid; place-items: center; margin-bottom: 24px; }
 .result-placeholder h3 { font-size: 15px; color: #7e8c70; margin-bottom: 12px; line-height: 1.7; }
 .result-placeholder p { font-size: 15px; color: #7b8a71; line-height: 1.9; white-space: pre-line; }
 .placeholder-rule { width: 160px; height: 7px; background: #f2f4ed; border-radius: 4px; margin-top: 27px; }
