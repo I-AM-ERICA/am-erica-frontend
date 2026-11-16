@@ -1,0 +1,5 @@
+.account-settings-status { max-width: 600px; margin: 15vh auto; padding: 32px 24px; text-align: center; }
+.account-settings-status h1 { font-size: 23px; line-height: 1.6; }
+.account-settings-status p { color: #73836b; line-height: 1.9; margin: 18px 0 24px; }
+.account-settings-status .text-button { display: block; margin: 20px auto; }
+.staff-gender-options button:disabled { opacity: .6; cursor: wait; }

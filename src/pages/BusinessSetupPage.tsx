@@ -15,14 +15,20 @@ const categories = [
   { name: '기타', icon: Store, note: '어떤 가게든, 함께할게요', short: '모든 가게의 가능성', className: 'other' },
 ]
 
-export default function BusinessSetupPage({ profile, hasStore, onBack, onComplete }: { profile: StoreProfile; hasStore: boolean; onBack: () => void; onComplete: (profile: StoreProfile) => void }) {
+export default function BusinessSetupPage({ profile, hasStore, onBack, onComplete }: { profile: StoreProfile; hasStore: boolean; onBack: () => void; onComplete: (profile: StoreProfile) => void | Promise<void> }) {
   const [category, setCategory] = useState(hasStore ? profile.category : '')
   const [name, setName] = useState(hasStore ? profile.name : '')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const selected = categories.find((item) => item.name === category)
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!selected) return
-    onComplete({ ...profile, category: selected.name, name: name.trim() || (hasStore ? profile.name : '우리 가게') })
+    if (!selected || saving) return
+    setSaving(true); setSaveError('')
+    try {
+      await onComplete({ ...profile, category: selected.name, name: name.trim() || (hasStore ? profile.name : '우리 가게') })
+    } catch (error) { setSaveError(error instanceof Error && error.name !== 'TypeError' ? error.message : '가게 정보를 저장하지 못했어요. 다시 시도해 주세요.') }
+    finally { setSaving(false) }
   }
 
   return <div className="setup-page">
@@ -31,11 +37,12 @@ export default function BusinessSetupPage({ profile, hasStore, onBack, onComplet
       <p className="setup-eyebrow">사장님, 반가워요.</p>
       <h1>어떤 가게를<br />운영하고 계신가요?</h1>
       <p className="setup-description">가게에 맞는 업종을 하나 골라 주세요.<br />선택한 정보는 나중에 바꿀 수 있어요.</p>
-      <fieldset className="business-options"><legend className="visually-hidden">가게 업종 선택</legend>{categories.map(({ name: option, icon: Icon }) => <label className={`business-option ${category === option ? 'selected' : ''}`} key={option}><input type="radio" name="business-category" value={option} checked={category === option} onChange={() => setCategory(option)} /><Icon size={20} /><span>{option}</span>{category === option && <Check size={17} className="option-check" />}</label>)}</fieldset>
+      <fieldset className="business-options" disabled={saving}><legend className="visually-hidden">가게 업종 선택</legend>{categories.map(({ name: option, icon: Icon }) => <label className={`business-option ${category === option ? 'selected' : ''}`} key={option}><input type="radio" name="business-category" value={option} checked={category === option} onChange={() => setCategory(option)} /><Icon size={20} /><span>{option}</span>{category === option && <Check size={17} className="option-check" />}</label>)}</fieldset>
       <label className="business-name-label" htmlFor="business-name">가게 이름 <span>선택</span></label>
-      <input id="business-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="예: 오후의 커피" />
-      <button className="setup-continue" type="submit" disabled={!selected}>선택하고 비서 만나기<ArrowRight size={19} /></button>
-      <p className="setup-storage-note">입력한 정보는 이 브라우저에 저장돼요.</p>
+      <input id="business-name" disabled={saving} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="예: 오후의 커피" />
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
+      <button className="setup-continue" type="submit" disabled={!selected || saving}>{saving ? '계정에 저장 중' : '선택하고 비서 만나기'}<ArrowRight size={19} /></button>
+      <p className="setup-storage-note">입력한 정보는 계정에 저장되어 다음 로그인에도 유지돼요.</p>
     </form>
     <aside className="setup-visual" aria-label="다양한 업종의 가게를 위한 서비스"><p className="setup-visual-intro">가게의 모습은 달라도,<br /><strong>사장님의 마음은 같으니까.</strong></p><div className="shop-mosaic" aria-hidden="true">{[categories[0], categories[1], categories[4], categories[2]].map(({ name: option, icon: Icon, short, className }) => <div className={`shop-poster poster-${className} ${category === option ? 'highlighted' : ''}`} key={option}><span className="poster-category">{option}</span><strong>{short}</strong><div className="poster-shop"><div className="poster-roof" /><div className="poster-awning"><i /><i /><i /><i /><i /></div><div className="poster-window"><Icon size={36} strokeWidth={1.25} /></div><div className="poster-door" /></div><span className="poster-caption">사장님 곁에, 가게비서</span></div>)}</div><p className="setup-visual-note" aria-live="polite">{selected ? `${selected.note}. 가게비서가 함께할게요.` : '작은 가게의 든든한 운영 파트너'}</p></aside>
     </main>

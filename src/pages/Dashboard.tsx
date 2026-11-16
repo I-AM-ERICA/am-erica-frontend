@@ -13,6 +13,7 @@ interface DashboardProps {
   onNavigate: (page: PageId) => void
   onActivity: (activity: Activity) => void
   onGuide: () => void
+  staffSaving?: boolean
   onStaffGenderChange: (id: AssistantId, gender: StaffGender) => void
 }
 
@@ -23,7 +24,7 @@ const actions = [
   { title: '매출 분석하기', button: '매출 살펴보기' },
 ]
 
-export default function Dashboard({ profile, activities, onNavigate, onActivity, onGuide, onStaffGenderChange }: DashboardProps) {
+export default function Dashboard({ profile, activities, onNavigate, onActivity, onGuide, onStaffGenderChange, staffSaving = false }: DashboardProps) {
   const staffPreferences = useContext(StaffPreferencesContext)
   const recent = activities.filter((activity) => activity.createdAt).slice(0, 2)
   return (
@@ -44,11 +45,11 @@ export default function Dashboard({ profile, activities, onNavigate, onActivity,
                 <span className="simple-assistant-action">{actions[index].button}<ArrowRight size={17} /></span>
               </div>
             </a>
-            <div className="staff-gender-controls" role="group" aria-label={`${name} 스태프 성별`}>
+            <div className="staff-gender-controls" role="group" aria-label={`${name} 스태프 성별`} aria-busy={staffSaving}>
               <span className="staff-gender-label">스태프 선택</span>
               <div className="staff-gender-options">
-                <button type="button" aria-pressed={staffPreferences[id] === 'boy'} onClick={() => onStaffGenderChange(id, 'boy')}>남성</button>
-                <button type="button" aria-pressed={staffPreferences[id] === 'girl'} onClick={() => onStaffGenderChange(id, 'girl')}>여성</button>
+                <button type="button" disabled={staffSaving} aria-pressed={staffPreferences[id] === 'boy'} onClick={() => onStaffGenderChange(id, 'boy')}>남성</button>
+                <button type="button" disabled={staffSaving} aria-pressed={staffPreferences[id] === 'girl'} onClick={() => onStaffGenderChange(id, 'girl')}>여성</button>
               </div>
             </div>
           </article>

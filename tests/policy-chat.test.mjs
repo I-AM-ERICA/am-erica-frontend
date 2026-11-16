@@ -84,6 +84,13 @@ test('a backend failure stays an error instead of silently using demo text', asy
   await assert.rejects(askPolicy('지원금은?', [], { name: '가게', category: '카페', region: '서울' }, () => {}, new AbortController().signal), /연결하지 못했어요/)
 })
 
+test('search quota errors tell the user that retry needs restored search availability', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ code: 'AI_SEARCH_LIMIT' }, { status: 503 }))
+  await assert.rejects(askPolicy('지원금은?', [], { id: 7, name: '가게', category: '카페', region: '서울' }, () => {}, new AbortController().signal), /이용 한도/)
+  const event = 'event: error\ndata: {"code":"AI_SEARCH_LIMIT","message":"private detail"}\n\n'
+  await assert.rejects(readPolicyStream(responseFor(event), () => {}, new AbortController().signal), (error) => error.message.includes('이용 한도') && !error.message.includes('private'))
+})
+
 test('stored interrupted replies restore as stopped and storage keys stay isolated', () => {
   const original = globalThis.localStorage
   const values = new Map()

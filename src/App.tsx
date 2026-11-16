@@ -3,8 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Layout from './components/Layout'
 import Modal from './components/Modal'
 import StaffAvatar from './components/StaffAvatar'
-import { defaultStaffPreferences, isStaffPreferences, StaffPreferencesContext } from './services/staff'
-import type { StaffGender } from './services/staff'
+import { defaultStaffPreferences, StaffPreferencesContext } from './services/staff'
+import type { StaffGender, StaffPreferences } from './services/staff'
+import { loadAccountSettings, saveStoreProfile, saveStaffPreference } from './services/account-settings'
+import './pages/styles/account-settings.css'
 import { assistants } from './data'
 import Dashboard from './pages/Dashboard'
 import AssistantPage from './pages/AssistantPage'
@@ -25,7 +27,6 @@ const defaultProfile: StoreProfile = { name: '우리 가게', owner: '사장', c
 function readLocal<T>(key: string, fallback: T, validate: (value: unknown) => value is T): T {
   try { const value: unknown = JSON.parse(localStorage.getItem(key) ?? 'null'); return validate(value) ? value : fallback } catch { return fallback }
 }
-function isProfile(value: unknown): value is StoreProfile { return !!value && typeof value === 'object' && ['name', 'owner', 'category', 'region'].every((key) => key in value && typeof (value as Record<string, unknown>)[key] === 'string' && ((value as Record<string, string>)[key].trim().length > 0)) }
 function isActivities(value: unknown): value is Activity[] { return Array.isArray(value) && value.every((item) => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.description === 'string' && typeof item.content === 'string' && typeof item.createdAt === 'string' && assistants.some((assistant) => assistant.id === item.assistant)) }
 
 export default function App() {
@@ -64,11 +65,40 @@ export default function App() {
 function Application({ user, checking, authError }: { user: AuthUser | null; checking: boolean; authError: string }) {
   const storageKey = (key: string) => `${key}:${user?.id ?? 'guest'}`
   const [requestedPage, setPage] = useState<AppPage>(() => hasNaverCallback() ? 'login' : readRoute(location.hash))
-  const [hasStore, setHasStore] = useState(() => readLocal(storageKey('gage-onboarded'), false, (value): value is boolean => typeof value === 'boolean'))
+  const [hasStore, setHasStore] = useState(false)
   const page = resolveRoute(requestedPage, hasStore, !!user)
-  const [profile, setProfile] = useState(() => readLocal(storageKey('gage-profile'), defaultProfile, isProfile))
-  const [staffPreferences, setStaffPreferences] = useState(() => readLocal(storageKey('gage-staff-preferences'), defaultStaffPreferences, isStaffPreferences))
+  const [profile, setProfile] = useState<StoreProfile>({ ...defaultProfile, owner: user?.name || defaultProfile.owner })
+  const [staffPreferences, setStaffPreferences] = useState<StaffPreferences>(defaultStaffPreferences)
   const [activities, setActivities] = useState(() => readLocal(storageKey('gage-activities'), [], isActivities))
+  const [accountStatus, setAccountStatus] = useState<'loading' | 'ready' | 'error'>(user ? 'loading' : 'ready')
+  const [accountReload, setAccountReload] = useState(0)
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const savingRef = useRef(false)
+  const settingsRequest = useRef<AbortController | null>(null)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; settingsRequest.current?.abort() }
+  }, [])
+  useEffect(() => {
+    if (!user) return
+    const controller = new AbortController()
+    let active = true
+    setAccountStatus('loading')
+    loadAccountSettings(controller.signal).then((data) => {
+      if (!active) return
+      setHasStore(!!data.store)
+      setProfile(data.store || { ...defaultProfile, owner: user.name || defaultProfile.owner })
+      setStaffPreferences(data.staffPreferences)
+      setAccountStatus('ready')
+      // A returning login should not repeat onboarding; later explicit industry changes still open setup.
+      if (data.store) {
+        setPage((current) => current === 'setup' ? 'dashboard' : current)
+        if (location.hash === '#setup') window.history.replaceState(null, '', `${location.pathname}${location.search}#dashboard`)
+      }
+    }).catch(() => { if (active) setAccountStatus('error') })
+    return () => { active = false; controller.abort() }
+  }, [user, accountReload])
   const [modal, setModal] = useState<'help' | 'search' | Activity | null>(null)
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
@@ -80,24 +110,44 @@ function Application({ user, checking, authError }: { user: AuthUser | null; che
   const navigate = (next: AppPage) => { location.hash = next; setPage(next); window.scrollTo({ top: 0 }); setModal(null) }
   const saveLocal = (key: string, value: unknown) => { try { localStorage.setItem(storageKey(key), JSON.stringify(value)); return true } catch { notify('브라우저 저장 공간을 사용할 수 없어요. 이번 방문 중에만 유지됩니다.'); return false } }
   const saveActivity = (activity: Activity) => { const next = [activity, ...activities].slice(0, 50); setActivities(next); saveLocal('gage-activities', next) }
-  const changeStaffGender = (id: AssistantId, gender: StaffGender) => {
-    const next = { ...staffPreferences, [id]: gender }
-    setStaffPreferences(next)
-    saveLocal('gage-staff-preferences', next)
+  const changeStaffGender = async (id: AssistantId, gender: StaffGender) => {
+    if (savingRef.current || accountStatus !== 'ready' || staffPreferences[id] === gender) return
+    savingRef.current = true; setSettingsSaving(true)
+    const controller = new AbortController(); settingsRequest.current = controller
+    try {
+      const next = await saveStaffPreference(id, gender, controller.signal)
+      if (mounted.current) { setStaffPreferences(next); notify('비서 선택을 계정에 저장했어요.') }
+    } catch {
+      if (mounted.current) notify('비서 선택을 저장하지 못했어요. 다시 선택해 주세요.')
+    } finally { savingRef.current = false; if (mounted.current) setSettingsSaving(false) }
+  }
+  const persistProfile = async (next: StoreProfile) => {
+    if (savingRef.current || accountStatus !== 'ready') throw new Error('저장 중이에요. 잠시 후 다시 시도해 주세요.')
+    savingRef.current = true; setSettingsSaving(true)
+    const controller = new AbortController(); settingsRequest.current = controller
+    try {
+      const saved = await saveStoreProfile(next, controller.signal)
+      if (!mounted.current) throw new Error('화면을 벗어나 저장 결과를 확인하지 못했어요.')
+      setProfile(saved.store!); setHasStore(true); setStaffPreferences(saved.staffPreferences)
+    } finally { savingRef.current = false; if (mounted.current) setSettingsSaving(false) }
   }
   const openSearch = () => { setSearch(''); setModal('search') }
   const searchTerm = search.trim().toLowerCase()
   const searchAssistants = assistants.filter((item) => `${item.name} ${item.title} ${item.tag} ${item.description}`.toLowerCase().includes(searchTerm))
   const searchActivities = activities.filter((item) => `${item.title} ${item.description}`.toLowerCase().includes(searchTerm)).slice(0, 5)
-  const completeSetup = (next: StoreProfile) => {
-    setProfile(next)
-    setHasStore(true)
-    if (saveLocal('gage-profile', next)) saveLocal('gage-onboarded', true)
+  const completeSetup = async (next: StoreProfile) => {
+    await persistProfile(next)
     navigate('dashboard')
   }
+  if (user && accountStatus !== 'ready' && requestedPage !== 'intro') return <main className="account-settings-status" aria-busy={accountStatus === 'loading'}>
+    <h1>{accountStatus === 'loading' ? '우리 가게 정보를 불러오고 있어요' : '저장된 정보를 불러오지 못했어요'}</h1>
+    <p>{accountStatus === 'loading' ? '계정에 저장된 매장과 비서 선택을 확인하고 있어요.' : '연결을 확인한 뒤 다시 시도해 주세요. 저장된 정보를 확인한 후 계속할 수 있어요.'}</p>
+    {accountStatus === 'error' && <button className="primary-button" onClick={() => setAccountReload((value) => value + 1)}>다시 불러오기</button>}
+    <button className="text-button" onClick={() => navigate('intro')}>서비스 소개로 돌아가기</button>
+  </main>
   return <StaffPreferencesContext.Provider value={staffPreferences}>
-    {page === 'intro' ? <LandingPage hasStore={hasStore} userName={user?.name} checking={checking} onLogin={() => navigate('login')} onLogout={() => { navigate('intro'); logout() }} onStart={() => navigate('setup')} onResume={() => navigate('dashboard')} /> : page === 'login' ? <Login onBack={() => navigate('intro')} returnTo={requestedPage === 'login' || requestedPage === 'intro' ? (hasStore ? 'dashboard' : 'setup') : requestedPage} checking={checking} error={authError} /> : page === 'setup' ? <BusinessSetupPage profile={profile} hasStore={hasStore} onBack={() => navigate('intro')} onComplete={completeSetup} /> : <Layout page={page} onNavigate={navigate} profile={profile} onSearch={openSearch} onHelp={() => setModal('help')} onSelectBusiness={() => navigate('setup')} onIntroduction={() => navigate('intro')}>
-      {page === 'dashboard' ? <Dashboard profile={profile} activities={activities} onNavigate={navigate} onActivity={setModal} onGuide={() => setModal('help')} onStaffGenderChange={changeStaffGender} /> : page === 'history' ? <HistoryPage activities={activities} onOpen={setModal} /> : page === 'settings' ? <SettingsPage profile={profile} onSave={(next) => { setProfile(next); if (saveLocal('gage-profile', next)) notify('가게 정보를 저장했어요.') }} /> : page === 'policy' ? <PolicyChatPage key={JSON.stringify([profile.name, profile.category, profile.region])} storageKey={storageKey('gage-policy-chat') + ':' + JSON.stringify([profile.name, profile.category, profile.region])} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} /> : page === 'marketing' ? <MarketingPage key={JSON.stringify(profile)} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} /> : <AssistantPage key={page} id={page} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} />}
+    {page === 'intro' ? <LandingPage hasStore={hasStore} userName={user?.name} checking={checking} onLogin={() => navigate('login')} onLogout={() => { navigate('intro'); logout() }} onStart={() => navigate(hasStore ? 'dashboard' : 'setup')} onResume={() => navigate('dashboard')} /> : page === 'login' ? <Login onBack={() => navigate('intro')} returnTo={requestedPage === 'login' || requestedPage === 'intro' ? (hasStore ? 'dashboard' : 'setup') : requestedPage} checking={checking} error={authError} /> : page === 'setup' ? <BusinessSetupPage profile={profile} hasStore={hasStore} onBack={() => navigate('intro')} onComplete={completeSetup} /> : <Layout page={page} onNavigate={navigate} profile={profile} onSearch={openSearch} onHelp={() => setModal('help')} onSelectBusiness={() => navigate('setup')} onIntroduction={() => navigate('intro')}>
+      {page === 'dashboard' ? <Dashboard profile={profile} activities={activities} onNavigate={navigate} onActivity={setModal} onGuide={() => setModal('help')} onStaffGenderChange={changeStaffGender} staffSaving={settingsSaving} /> : page === 'history' ? <HistoryPage activities={activities} onOpen={setModal} /> : page === 'settings' ? <SettingsPage profile={profile} onSave={async (next) => { await persistProfile(next); notify('가게 정보를 계정에 저장했어요.') }} /> : page === 'policy' ? <PolicyChatPage key={JSON.stringify([profile.name, profile.category, profile.region])} storageKey={storageKey('gage-policy-chat') + ':' + JSON.stringify([profile.name, profile.category, profile.region])} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} /> : page === 'marketing' ? <MarketingPage key={JSON.stringify(profile)} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} /> : <AssistantPage key={page} id={page} profile={profile} onBack={() => navigate('dashboard')} onSave={saveActivity} onToast={notify} />}
     </Layout>}
     {modal === 'help' && <Modal title="사장님 곁의 네 명의 비서를 소개해요" onClose={() => setModal(null)}><p className="guide-intro">처음이라도 괜찮아요. 필요한 비서를 선택하고, 도움이 필요한 내용을 편하게 적어 주세요.</p>{assistants.map(({ id, name, description }) => <div className="guide-item" key={id}><StaffAvatar id={id} /><div><h3><button onClick={() => navigate(id)}>{name} <ArrowRight size={11} /></button></h3><p>{description.replace('\n', ' ')}</p></div></div>)}<div className="guide-note">체험 모드에서는 예시 템플릿을 제공합니다. 홍보 비서는 참고 이미지와 글귀로 카드뉴스를 제작합니다. 고객 답변은 자동으로 발송되지 않습니다. 생성한 작업은 이용 내역에서 다시 확인할 수 있어요.</div><div className="modal-actions"><button className="primary-button" onClick={() => navigate('policy')}>정책 비서부터 만나보기<ArrowRight size={14} /></button></div></Modal>}
     {modal === 'search' && <Modal title="어떤 도움이 필요하세요?" onClose={() => setModal(null)}><input autoFocus className="search-input" aria-label="비서와 작업 검색" placeholder="정책, 카드뉴스, 리뷰, 매출 등을 검색해 보세요" value={search} onChange={(event) => setSearch(event.target.value)} /><p className="search-section-label">우리 가게 비서</p>{searchAssistants.map(({ id, name, tag }) => <button className="search-result" key={id} onClick={() => navigate(id)}><StaffAvatar id={id} /><span><strong>{name}</strong><small>{tag}</small></span></button>)}{searchActivities.length > 0 && <p className="search-section-label">최근 작업</p>}{searchActivities.map((activity) => <button className="search-result" key={activity.id} onClick={() => setModal(activity)}><Search size={17} /><span><strong>{activity.title}</strong><small>{activity.description}</small></span></button>)}{searchAssistants.length === 0 && searchActivities.length === 0 && <p className="empty-state">검색 결과가 없어요. 다른 단어로 찾아보세요.</p>}</Modal>}

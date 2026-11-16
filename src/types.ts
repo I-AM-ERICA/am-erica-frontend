@@ -13,6 +13,7 @@ export interface Activity {
 }
 
 export interface StoreProfile {
+  id?: number
   name: string
   owner: string
   category: string

@@ -21,6 +21,7 @@ export default function PolicyChatPage({ profile, storageKey, onBack, onSave, on
   const [messages, setMessages] = useState<PolicyMessage[]>(() => readPolicyConversation(storageKey))
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
+  const [mailBusy, setMailBusy] = useState(false)
   const [storageWarning, setStorageWarning] = useState(false)
   const [formError, setFormError] = useState('')
   const controller = useRef<AbortController | null>(null)
@@ -54,7 +55,7 @@ export default function PolicyChatPage({ profile, storageKey, onBack, onSave, on
   }, [draft])
 
   const send = async (question: string, retry = false) => {
-    if (controller.current || !question.trim()) return
+    if (controller.current || mailBusy || !question.trim()) return
     if (question.length > 1000) { setFormError('질문은 1,000자 이내로 입력해 주세요.'); return }
     setFormError('')
     const previous = retry ? messages.slice(0, -2) : messages
@@ -88,7 +89,7 @@ export default function PolicyChatPage({ profile, storageKey, onBack, onSave, on
   }
   const submit = (event: FormEvent) => { event.preventDefault(); void send(draft) }
   const startNew = () => {
-    if (busy) return
+    if (busy || mailBusy) return
     setMessages([]); setDraft(''); setFormError('')
     setStorageWarning(!savePolicyConversation(storageKey, []))
     input.current?.focus()
@@ -99,9 +100,17 @@ export default function PolicyChatPage({ profile, storageKey, onBack, onSave, on
       <button className="policy-chat-back" onClick={onBack} aria-label="비서 선택으로 돌아가기"><ArrowLeft size={20} /></button>
       <StaffAvatar id="policy" />
       <div className="policy-chat-heading"><h1>정책 비서</h1><p>{profile.name}에 맞는 지원 정책을 함께 찾아봐요.</p></div>
-      <button className="policy-new-chat" onClick={startNew} disabled={busy}><MessageSquarePlus size={18} /><span>새 대화</span></button>
+      <button className="policy-new-chat" onClick={startNew} disabled={busy || mailBusy}><MessageSquarePlus size={18} /><span>새 대화</span></button>
     </header>
-    <PolicyReminderToggle profile={profile} />
+    <PolicyReminderToggle profile={profile} chatBusy={busy} onBusyChange={setMailBusy} onResult={(result) => {
+      followBottom.current = true
+      setMessages((current) => [...current, {
+        id: crypto.randomUUID(), role: 'user' as const, content: '현재 신청할 수 있는 정책을 검색하고 이메일로 보내주세요.', status: 'complete' as const,
+      }, {
+        id: crypto.randomUUID(), role: 'assistant' as const, content: result.content, status: 'complete' as const,
+      }].slice(-40))
+      onSave({ id: crypto.randomUUID(), assistant: 'policy', title: '정책 검색 결과 이메일 발송', description: '정책 비서 이메일', content: result.content, createdAt: new Date().toISOString() })
+    }} />
     <div className="policy-transcript" ref={transcript} onScroll={() => { const el = transcript.current; if (el) followBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
       {messages.length === 0 ? <div className="policy-chat-empty">
         <StaffAvatar id="policy" />
@@ -134,7 +143,7 @@ export default function PolicyChatPage({ profile, storageKey, onBack, onSave, on
         <textarea ref={input} id="policy-chat-input" aria-label="정책 비서에게 질문하기" placeholder="지원 정책에 대해 물어보세요" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={1000} rows={1} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); if (!busy) void send(draft) }
         }} />
-        {busy ? <button type="button" className="policy-send" aria-label="답변 생성 중지" onClick={() => { stopped.current = true; controller.current?.abort() }}><Square size={16} fill="currentColor" /></button> : <button type="submit" className="policy-send" aria-label="질문 보내기" disabled={!draft.trim()}><ArrowUp size={22} /></button>}
+        {busy ? <button type="button" className="policy-send" aria-label="답변 생성 중지" onClick={() => { stopped.current = true; controller.current?.abort() }}><Square size={16} fill="currentColor" /></button> : <button type="submit" className="policy-send" aria-label="질문 보내기" disabled={!draft.trim() || mailBusy}><ArrowUp size={22} /></button>}
       </form>
       <div className="policy-composer-hint"><span>Enter로 전송 · Shift+Enter로 줄바꿈</span><span>{draft.length}/1,000</span></div>
       <p className="policy-chat-disclaimer">신청 조건과 접수 기간은 공식 공고에서 확인해 주세요.</p>

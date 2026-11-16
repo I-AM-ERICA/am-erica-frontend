@@ -63,6 +63,7 @@ export function savePolicyConversation(key: string, messages: PolicyMessage[]): 
 }
 
 const policyErrors: Record<string, string> = {
+  AI_SEARCH_LIMIT: '정책 검색 서비스의 이용 한도에 도달했어요. 한도 복구 후 다시 이용해 주세요.',
   AI_UNAVAILABLE: '정책 검색에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
   AI_TIMEOUT: '답변 준비 시간이 초과됐어요. 질문을 조금 더 구체적으로 적어 다시 시도해 주세요.',
   AI_BUSY: '정책 비서가 다른 질문을 처리 중이에요. 잠시 후 다시 시도해 주세요.',
@@ -90,6 +91,8 @@ async function checkedFetch(path: string, init: RequestInit, signal: AbortSignal
 
 // Reuse this account's matching store; never send another account's cached store ID.
 export async function resolveStore(profile: StoreProfile, signal: AbortSignal): Promise<number> {
+  // Account settings supplies the persistent store ID. Renaming a store must not create another one.
+  if (Number.isSafeInteger(profile.id) && profile.id! > 0) return profile.id!
   const response = await checkedFetch('/api/stores', { method: 'GET' }, signal)
   const stores: unknown = await response.json()
   if (!Array.isArray(stores)) throw new Error('가게 정보를 확인하지 못했어요.')
