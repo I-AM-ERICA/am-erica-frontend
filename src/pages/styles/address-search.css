@@ -1,0 +1,16 @@
+.store-address-row { display: flex; align-items: stretch; gap: 10px; }
+.store-address-row input { min-width: 0; flex: 1; cursor: pointer; }
+.store-address-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 16px; border: 1px solid #cbd8c2; border-radius: 7px; color: #31543e; background: #f4f7f0; white-space: nowrap; }
+.store-address-button:hover:not(:disabled) { background: #e8efdf; }
+.store-address-button:focus-visible, .address-search-dialog button:focus-visible { outline: 2px solid #4f6944; outline-offset: 3px; }
+.address-search-dialog { width: min(520px, calc(100vw - 24px)); height: min(660px, calc(100dvh - 40px)); max-height: calc(100dvh - 40px); margin: auto; padding: 0; border: 1px solid #dce5d3; border-radius: 14px; color: #30392e; background: white; box-shadow: 0 16px 60px #1f332633; }
+.address-search-dialog[open] { display: flex; flex-direction: column; }
+.address-search-dialog::backdrop { background: #18291e80; }
+.address-search-dialog header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 20px; border-bottom: 1px solid #e2e8dc; flex-shrink: 0; }
+.address-search-dialog h2 { font-size: 18px; }
+.address-search-dialog header button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 8px; }
+.address-search-dialog header button:hover { background: #f3f6ee; }
+.address-search-frame { min-height: 0; flex: 1; }
+.address-search-notice { padding: 12px 18px; font-size: 13px; line-height: 1.7; color: #627759; }
+.address-search-notice button { margin-top: 8px; min-height: 36px; text-decoration: underline; }
+@media (max-width: 480px) { .store-address-row { flex-wrap: wrap; } .store-address-row input { flex-basis: 100%; } .store-address-button { width: 100%; } }

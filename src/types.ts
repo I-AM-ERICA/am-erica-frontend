@@ -18,6 +18,7 @@ export interface StoreProfile {
   owner: string
   category: string
   region: string
+  address?: string | null
 }
 
 export interface AssistantResult {

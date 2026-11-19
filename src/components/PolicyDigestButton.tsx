@@ -5,13 +5,14 @@ import type { PolicyDeliveryResult } from '../services/policy-reminder'
 import type { StoreProfile } from '../types'
 
 interface Props {
+  prepareConversation?: (signal: AbortSignal) => Promise<number>
   profile: StoreProfile
   disabled: boolean
   onResult?: (result: PolicyDeliveryResult) => void
   onBusyChange?: (busy: boolean) => void
 }
 
-export default function PolicyDigestButton({ profile, disabled, onResult, onBusyChange }: Props) {
+export default function PolicyDigestButton({ profile, disabled, onResult, onBusyChange, prepareConversation }: Props) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -29,7 +30,8 @@ export default function PolicyDigestButton({ profile, disabled, onResult, onBusy
     setBusy(true); onBusyChange?.(true); setNotice(''); setError('')
     const timer = window.setTimeout(() => controller.abort(), 150000)
     try {
-      const result = await sendPolicyDigest(profile, controller.signal)
+      const conversationId = await prepareConversation?.(controller.signal)
+      const result = await sendPolicyDigest(profile, controller.signal, conversationId)
       if (mounted.current) {
         setNotice(`${result.email}로 메일을 발송했어요. 검색 결과는 대화에서도 확인할 수 있어요.`)
         onResult?.(result)

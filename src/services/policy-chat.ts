@@ -63,6 +63,10 @@ export function savePolicyConversation(key: string, messages: PolicyMessage[]): 
 }
 
 const policyErrors: Record<string, string> = {
+  CHAT_NOT_FOUND: '보관되지 않은 대화예요. 최근 대화 목록을 다시 불러와 주세요.',
+  CHAT_BUSY: '이 대화에서 답변을 작성 중이에요. 잠시 후 다시 불러와 주세요.',
+  CHAT_SAVE_FAILED: '답변을 DB에 저장하지 못했어요. 대화를 다시 불러와 저장 상태를 확인해 주세요.',
+  CHAT_INTERRUPTED: '답변 처리가 중단되었어요. 다시 질문해 주세요.',
   AI_SEARCH_LIMIT: '정책 검색 서비스의 이용 한도에 도달했어요. 한도 복구 후 다시 이용해 주세요.',
   AI_UNAVAILABLE: '정책 검색에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
   AI_TIMEOUT: '답변 준비 시간이 초과됐어요. 질문을 조금 더 구체적으로 적어 다시 시도해 주세요.',
@@ -72,13 +76,13 @@ const policyErrors: Record<string, string> = {
   AI_AUTH_FAILED: '정책 비서 연결 설정을 확인해야 해요. 관리자에게 알려 주세요.',
   VALIDATION_FAILED: '질문은 1,000자 이내로 입력해 주세요. 가게 정보도 확인해 주세요.',
 }
-function policyError(code: unknown): string {
+export function policyError(code: unknown): string {
   return typeof code === 'string' && Object.hasOwn(policyErrors, code)
     ? policyErrors[code]
     : '정책 비서 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.'
 }
 
-async function checkedFetch(path: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
+export async function checkedFetch(path: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
   const headers = { ...getAuthHeaders(), ...init.headers }
   const response = await fetch(path, { ...init, headers, signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }

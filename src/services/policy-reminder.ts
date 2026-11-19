@@ -38,11 +38,11 @@ export async function setPolicyReminder(enabled: boolean, profile: StoreProfile,
 }
 
 export interface PolicyDeliveryResult { email: string; content: string }
-export async function sendPolicyDigest(profile: StoreProfile, signal: AbortSignal): Promise<PolicyDeliveryResult> {
-  const storeId = await resolveStore(profile, signal)
-  const response = await fetch('/api/me/policy-reminder/send-now', {
+export async function sendPolicyDigest(profile: StoreProfile, signal: AbortSignal, conversationId?: number): Promise<PolicyDeliveryResult> {
+  const storeId = conversationId ? undefined : await resolveStore(profile, signal)
+  const response = await fetch(conversationId ? `/api/me/policy/conversations/${conversationId}/email` : '/api/me/policy-reminder/send-now', {
     method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ storeId }), signal,
+    body: JSON.stringify(conversationId ? { clientMessageId: crypto.randomUUID() } : { storeId }), signal,
   })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) {

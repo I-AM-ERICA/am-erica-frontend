@@ -76,6 +76,12 @@
 }
 
 .policy-reminder { padding: 14px 24px; background: #f7f9f3; border-bottom: 1px solid #e2e8dc; flex-shrink: 0; max-height: 40%; overflow-y: auto; }
+.policy-reminder[hidden] { display: none; }
+.policy-reminder-opener, .policy-reminder-close { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; color: #4f6944; }
+.policy-reminder-opener { border: 1px solid #e1e7db; }
+.policy-reminder-opener[aria-expanded="true"] { background: #edf3e7; }
+.policy-reminder-opener:hover, .policy-reminder-close:hover { background: #e5ecdd; }
+.policy-reminder-opener:focus-visible, .policy-reminder-close:focus-visible { outline: 2px solid #4f6944; outline-offset: 3px; }
 .policy-reminder-main { display: flex; align-items: center; gap: 12px; color: #4f6944; }
 .policy-reminder-copy { flex: 1; min-width: 0; }
 .policy-reminder-copy strong { font-size: 13px; }
@@ -99,3 +105,33 @@
 @keyframes policy-digest-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .policy-digest-spinner { animation: none; } }
 @media (max-width: 600px) { .policy-reminder { padding: 12px 14px; } .policy-reminder-main { gap: 8px; } .policy-reminder-main > svg { display: none; } .policy-reminder-status { margin-left: 0; } }
+.policy-conversations {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #e2e7dc;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.policy-conversations label { font-weight: 700; color: #31543f; }
+.policy-conversations select {
+  flex: 1;
+  min-width: 0;
+  max-width: 450px;
+  padding: 9px 12px;
+  border: 1px solid #dce3d5;
+  border-radius: 8px;
+  background: white;
+  color: #30392e;
+  font: inherit;
+}
+.policy-conversations span { color: #71816a; }
+.policy-history-error { padding: 12px 24px; background: #fff3ee; color: #963d2e; }
+.policy-history-error p { margin: 0 0 8px; }
+.policy-history-error button { border: 1px solid currentColor; border-radius: 6px; padding: 6px 12px; background: white; color: inherit; cursor: pointer; }
+@media (max-width: 600px) {
+  .policy-conversations { padding: 10px 16px; }
+  .policy-conversations span { flex-basis: 100%; font-size: 12px; }
+}

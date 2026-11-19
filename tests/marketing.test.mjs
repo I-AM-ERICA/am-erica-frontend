@@ -45,3 +45,44 @@ test('marketing UI presents reference upload, copy input and an explicitly uncon
   assert.match(html, /class="marketing-create" disabled=""/)
   assert.doesNotMatch(html, /숏폼|체험 결과 만들기/)
 })
+
+
+test('product bytes, reference style and zero price are mapped without browser-only fields', async () => {
+  const { marketingPayload } = await server.ssrLoadModule('/src/services/marketing.ts')
+  const photo = { base64: 'cGhvdG8=', mediaType: 'image/png', name: 'product.png', previewUrl: 'data:image/png;base64,cGhvdG8=' }
+  const payload = marketingPayload({ product: ' 커피 ', message: ' 신메뉴 ', tone: '담백하게', referenceImage: photo,
+    styleReference: { ...photo, base64: 'c3R5bGU=' }, price: 0, originalPrice: 4000, hideFooter: true, backgroundMode: 'keep' })
+  assert.deepEqual(payload.productImage, { base64: 'cGhvdG8=', mediaType: 'image/png' })
+  assert.equal(payload.styleReference.base64, 'c3R5bGU=')
+  assert.equal(payload.price, 0)
+  assert.equal(payload.hideFooter, true)
+  assert.equal(payload.product, '커피')
+  assert.equal(payload.backgroundMode, 'keep')
+  assert.ok(!JSON.stringify(payload).includes('previewUrl'))
+  assert.ok(!JSON.stringify(payload).includes('storeId'))
+})
+
+test('three drafts preserve versions, processing warnings and reject partial or unsafe output', async () => {
+  const { parseMarketingDrafts } = await server.ssrLoadModule('/src/services/marketing.ts')
+  const draft = { id: 'poster-1', version: 2, width: 1080, height: 1350, mode: 'clova',
+    result: { headline: '커피', body: '새로운 한 잔', hashtags: [], imageUrl: 'http://localhost:8081/images/photo.png' },
+    design: { template_id: 'editorial', hide_footer: true }, imageProcessing: { background: 'kept', warning: '원본 사진 사용' } }
+  const parsed = parseMarketingDrafts({ drafts: [draft, { ...draft, id: 'poster-2' }, { ...draft, id: 'poster-3' }], mode: 'clova' })
+  assert.equal(parsed.drafts[0].version, 2)
+  assert.equal(parsed.drafts[0].design.hide_footer, true)
+  assert.equal(parsed.drafts[0].imageProcessing.warning, '원본 사진 사용')
+  assert.throws(() => parseMarketingDrafts({ drafts: [draft], mode: 'clova' }))
+  assert.throws(() => parseMarketingDrafts({ drafts: [draft, draft, { ...draft, result: { ...draft.result, imageUrl: 'javascript:alert(1)' } }], mode: 'clova' }))
+})
+
+test('revision sends selected version and a conflict never becomes a successful result', async () => {
+  const { reviseMarketing, MarketingConflict } = await server.ssrLoadModule('/src/services/marketing.ts')
+  const original = globalThis.fetch
+  let sent
+  globalThis.fetch = async (url, init) => { sent = { url, body: JSON.parse(init.body) }; return new Response('{}', { status: 409 }) }
+  try {
+    await assert.rejects(reviseMarketing({ id: 'draft-123', version: 4 }, '초록색으로', { id: 42 }, new AbortController().signal), MarketingConflict)
+    assert.equal(sent.url, '/api/stores/42/ai/promotion/drafts/draft-123/revisions')
+    assert.deepEqual(sent.body, { instruction: '초록색으로', expectedVersion: 4 })
+  } finally { globalThis.fetch = original }
+})

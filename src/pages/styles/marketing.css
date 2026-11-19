@@ -72,3 +72,34 @@
 @media (max-width: 600px) { .marketing-heading { gap: 13px; } .marketing-heading > .staff-avatar { width: 55px; height: 55px; } .marketing-heading h1 { font-size: 26px; } .marketing-heading div > span { font-size: 12px; } .marketing-steps { gap: 10px; padding: 13px; } .marketing-steps > span { gap: 6px; font-size: 10px; } .marketing-steps > svg { display: none; } .marketing-form, .marketing-result { padding: 20px; } .marketing-section-title h2 { font-size: 17px; } .marketing-form input:not([type='file']), .marketing-form textarea, .marketing-form select { font-size: 16px; } .marketing-result-empty { min-height: 300px; } }
 
 .marketing-connection-note { font-size: 12px; line-height: 1.8; color: #87947a; text-align: center; margin-top: 12px; word-break: keep-all; }
+
+/* Promotion-AI: draft selection and versioned editing. */
+.marketing-price-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+.marketing-price-row label, .marketing-options label { display:grid; gap:8px; font-size:13px; font-weight:600; }
+.marketing-price-row small, .marketing-options small { font-weight:400; color:var(--muted, #777); }
+.marketing-options { margin-top:20px; border-top:1px solid #e8e5df; padding-top:16px; }
+.marketing-options summary { cursor:pointer; font-size:14px; font-weight:600; }
+.marketing-options label { margin-top:16px; }
+.marketing-options select { padding:11px; border:1px solid #ddd; border-radius:10px; background:white; font:inherit; }
+.marketing-options input[type=file] { padding:8px; font-size:12px; max-width:100%; }
+.marketing-extra-image { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12px; }
+.marketing-extra-image img { width:48px; height:48px; object-fit:contain; border-radius:6px; }
+.marketing-extra-image span { overflow:hidden; text-overflow:ellipsis; flex:1; }
+.marketing-drafts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
+.marketing-drafts button { padding:5px; border:2px solid transparent; border-radius:12px; background:#f5f4ef; overflow:hidden; }
+.marketing-drafts button[aria-pressed=true] { border-color:#47775b; background:#edf4ee; }
+.marketing-drafts img { width:100%; aspect-ratio:4/5; object-fit:contain; border-radius:6px; display:block; }
+.marketing-drafts span { display:flex; justify-content:center; align-items:center; gap:4px; font-size:11px; padding:8px 0 3px; }
+.marketing-mode-note { background:#fff6df; color:#715a28; padding:12px; border-radius:9px; font-size:12px; line-height:1.6; margin:0 0 14px; }
+.marketing-revision { border-top:1px solid #e8e5df; margin-top:20px; padding-top:18px; }
+.marketing-revision label { display:block; font-weight:600; font-size:14px; margin-bottom:10px; }
+.marketing-revision > div { display:flex; gap:8px; }
+.marketing-revision input { flex:1; min-width:0; padding:11px; border:1px solid #ddd; border-radius:10px; font:inherit; font-size:13px; }
+.marketing-revision small { display:block; font-size:11px; color:#777; line-height:1.6; margin-top:10px; }
+.marketing-edit-presets { flex-wrap:wrap; margin-top:10px; }
+.marketing-edit-presets button { font-size:11px; background:#f3f3ed; border-radius:20px; padding:7px 11px; }
+@media(max-width:540px) { .marketing-price-row { grid-template-columns:1fr; } .marketing-revision > div:not(.marketing-edit-presets) { flex-direction:column; } }
+
+.marketing-options .marketing-footer-toggle, .marketing-footer-toggle { display:flex; align-items:center; gap:9px; font-size:13px; font-weight:500; line-height:1.6; cursor:pointer; }
+.marketing-footer-toggle input[type=checkbox] { flex:none; width:17px; height:17px; min-height:0; padding:0; margin:0; accent-color:#47775b; }
+.marketing-result-footer-toggle { margin-top:18px; }

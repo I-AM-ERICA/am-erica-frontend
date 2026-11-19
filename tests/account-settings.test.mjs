@@ -20,6 +20,30 @@ const profile = { id: 17, name: '오후의 커피', owner: '김사장', category
 const data = { store: profile, staffPreferences: preferences }
 const signal = () => new AbortController().signal
 
+test('selected postcode address and policy region round-trip through the account API', async () => {
+  const selected = { ...profile, region: '경기 안산시 상록구', address: '경기 안산시 상록구 한양대학로 55' }
+  globalThis.fetch = async (url, init) => {
+    if (init.method === 'PUT') assert.deepEqual(JSON.parse(init.body), {
+      name: selected.name, owner: selected.owner, category: selected.category, region: selected.region, address: selected.address,
+    })
+    return Response.json({ ...data, store: selected })
+  }
+  assert.equal((await saveStoreProfile(selected, signal())).store.address, selected.address)
+  assert.equal((await loadAccountSettings(signal())).store.address, selected.address)
+  globalThis.fetch = async () => Response.json(data)
+  await assert.rejects(saveStoreProfile(selected, signal()), /주소 저장 결과/)
+})
+
+test('postcode selection keeps the selected road or lot address and handles Sejong without a district', async () => {
+  const { selectedAddress } = await server.ssrLoadModule('/src/services/postcode.ts')
+  const data = { userSelectedType: 'R', roadAddress: '경기 성남시 분당구 판교역로 166', jibunAddress: '경기 성남시 분당구 백현동 532', address: 'fallback', sido: '경기', sigungu: '성남시 분당구' }
+  assert.deepEqual(selectedAddress(data), { address: data.roadAddress, region: '경기 성남시 분당구' })
+  assert.equal(selectedAddress({ ...data, userSelectedType: 'J' }).address, data.jibunAddress)
+  assert.equal(selectedAddress({ ...data, sido: '세종특별자치시', sigungu: '' }).region, '세종특별자치시')
+  assert.throws(() => selectedAddress({ ...data, sido: '' }))
+  assert.throws(() => selectedAddress({ ...data, roadAddress: '', address: '' }))
+})
+
 test('saved store and staff choices restore entirely from account API without browser storage', async () => {
   globalThis.fetch = async (url, init) => {
     assert.equal(url, '/api/me/settings'); assert.equal(init.method, 'GET'); assert.equal(init.cache, 'no-store')
@@ -73,7 +97,7 @@ test('setup and settings explain account persistence and staff buttons disable d
   const setup = renderToStaticMarkup(createElement(Setup, { profile, hasStore: false, onBack: noop, onComplete: noop }))
   assert.match(setup, /계정에 저장/); assert.doesNotMatch(setup, /이 브라우저에 저장/)
   const settings = renderToStaticMarkup(createElement(Settings, { profile, onSave: noop }))
-  assert.match(settings, /다른 기기에서도/); assert.doesNotMatch(settings, /가게 소재지/)
+  assert.match(settings, /다른 기기에서도/); assert.match(settings, /가게 소재지/)
   const dashboard = renderToStaticMarkup(createElement(Dashboard, { profile, activities: [], onNavigate: noop, onActivity: noop, onGuide: noop, onStaffGenderChange: noop, staffSaving: true }))
   assert.equal((dashboard.match(/disabled="" aria-pressed=/g) || []).length, 8)
 })

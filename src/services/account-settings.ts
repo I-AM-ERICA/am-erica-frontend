@@ -11,7 +11,8 @@ function parseSettings(value: unknown): AccountSettings {
   if (data.store === null) return { store: null, staffPreferences: data.staffPreferences }
   const store = data.store as Record<string, unknown> | null
   if (!store || typeof store !== 'object' || !Number.isSafeInteger(store.id) || Number(store.id) <= 0
-    || !['name', 'owner', 'category', 'region'].every((key) => typeof store[key] === 'string' && (store[key] as string).trim())) {
+    || !['name', 'owner', 'category', 'region'].every((key) => typeof store[key] === 'string' && (store[key] as string).trim())
+    || (store.address != null && typeof store.address !== 'string')) {
     throw new Error('매장 정보를 확인하지 못했어요.')
   }
   return { store: store as unknown as StoreProfile, staffPreferences: data.staffPreferences }
@@ -27,11 +28,12 @@ export async function loadAccountSettings(signal: AbortSignal): Promise<AccountS
   return parseSettings(await request('/api/me/settings', { method: 'GET' }, signal))
 }
 export async function saveStoreProfile(profile: StoreProfile, signal: AbortSignal): Promise<AccountSettings> {
-  const { name, owner, category, region } = profile
+  const { name, owner, category, region, address } = profile
   const result = parseSettings(await request('/api/me/store-profile', {
-    method: 'PUT', body: JSON.stringify({ name: name.trim(), owner: owner.trim(), category: category.trim(), region: region.trim() }),
+    method: 'PUT', body: JSON.stringify({ name: name.trim(), owner: owner.trim(), category: category.trim(), region: region.trim(), ...(typeof address === 'string' ? { address: address.trim() } : {}) }),
   }, signal))
   if (!result.store) throw new Error('매장 저장 결과를 확인하지 못했어요.')
+  if (address?.trim() && result.store.address !== address.trim()) throw new Error('주소 저장 결과를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
   return result
 }
 export async function saveStaffPreference(assistant: AssistantId, gender: StaffGender, signal: AbortSignal): Promise<StaffPreferences> {
