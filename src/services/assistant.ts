@@ -1,4 +1,5 @@
 import { getAuthHeaders, logout } from './auth'
+import { draftCustomerReply } from './customer'
 import type { AssistantId, AssistantResult, StoreProfile } from '../types'
 
 export const isLiveMode = import.meta.env.VITE_API_MODE === 'live'
@@ -57,11 +58,11 @@ function demoResult(id: AssistantId, request: AssistantRequest): AssistantResult
     sources: [{ title: '소상공인24 공식 사이트', url: 'https://www.sbiz24.kr/' }, { title: '기업마당 공식 사이트', url: 'https://www.bizinfo.go.kr/' }],
   }
   if (id === 'marketing') return { text: format === '숏폼 기획' ? `15초 숏폼 기획 초안 · ${profile.name}\n\n주제: ${message}\n\n0~3초 | 시선을 끄는 첫 장면\n가게 입구나 대표 메뉴를 가까이 담아 주세요.\n자막: “오늘은 나를 위한 작은 선물”\n\n3~8초 | 준비하는 손길\n재료를 준비하거나 제품이 완성되는 장면을 담아요.\n자막: “${profile.name}에서 정성껏 준비했어요”\n\n8~12초 | 가장 매력적인 순간\n완성된 메뉴나 공간을 따뜻한 빛 아래 보여 주세요.\n자막: “일상 속 반가운 쉼표”\n\n12~15초 | 방문 안내\n가게 이름, 실제 영업시간과 위치를 넣어 주세요.\n자막: “${profile.name}에서 만나요”\n\n직접 촬영할 때는 세로 화면(9:16)을 권장해요.\n체험용 기획 템플릿이며 영상 파일은 생성되지 않습니다.` : `${format} 문안 초안 · ${profile.name}\n\n홍보 주제: ${message}\n\n${format === '카드뉴스 문안' ? '1장 · 표지\n' : ''}오늘의 일상에, 작은 즐거움 하나.\n${profile.name}에서 반가운 소식을 전해요.\n\n${format === '카드뉴스 문안' ? '2장 · 소개\n' : ''}${message}\n사장님의 정성과 가게만의 매력을 담아 준비했어요.\n\n${format === '카드뉴스 문안' ? '3장 · 매력 포인트\n' : ''}바쁜 하루 중 잠깐, 편안하게 들러 주세요.\n익숙한 일상에 기분 좋은 변화를 더해 드릴게요.\n\n${format === '카드뉴스 문안' ? '4장 · 방문 안내\n' : ''}${profile.region}, ${profile.name}에서 만나요.\n실제 영업시간과 행사 기간을 여기에 추가해 주세요.\n\n${format === '카드뉴스 문안' ? '5장 · 마무리\n' : ''}함께 오고 싶은 분에게 이 소식을 전해 주세요.\n\n#${profile.name.replace(/\s/g, '')} #동네가게 #오늘의소식\n\n체험용 문안 템플릿입니다. 이미지·영상 생성은 백엔드 연결 후 제공할 수 있습니다.` }
-  if (id === 'customer') return { text: `리뷰 답글 초안 · ${profile.name}\n\n안녕하세요, ${profile.name}입니다. 소중한 시간을 내어 리뷰를 남겨 주셔서 감사합니다.\n\n남겨 주신 리뷰 “${message}”을 확인했습니다. 고객님의 말씀을 가게 운영에 소중히 참고하겠습니다.\n\n앞으로도 정성껏 준비해서 맞이하겠습니다. 감사합니다.\n${profile.name} 드림\n\n체험용 리뷰 답글 템플릿입니다. 리뷰 내용과 실제 운영 방침에 맞게 수정한 후 사용해 주세요. 자동으로 게시되지 않습니다.` }
   return { text: analyzeSalesCsv(message) }
 }
 
 export async function runAssistant(id: AssistantId, request: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
+  if (id === 'customer') return draftCustomerReply(request.message, request.profile, signal)
   if (!isLiveMode) return demoResult(id, request)
   const response = await fetch(`/api/assistants/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(request), signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }

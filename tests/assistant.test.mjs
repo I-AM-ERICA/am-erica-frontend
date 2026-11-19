@@ -36,9 +36,9 @@ test('CSV rejects malformed or empty sales data instead of silently changing tot
   }
 })
 
-test('all demo assistants return usable content and policy references', async () => {
+test('remaining demo assistants return usable content and policy references', async () => {
   const profile = { name: '테스트 가게', owner: '사장', category: '카페', region: '서울' }
-  for (const id of ['policy', 'marketing', 'customer', 'sales']) {
+  for (const id of ['policy', 'marketing', 'sales']) {
     const result = await runAssistant(id, { message: id === 'sales' ? '매출\n1000' : '신메뉴 소식', format: id === 'marketing' ? '카드뉴스 문안' : '리뷰 답글', profile })
     assert.ok(result.text.length > 50)
     if (id === 'policy') assert.ok(result.sources.every((source) => source.url.startsWith('https://')))

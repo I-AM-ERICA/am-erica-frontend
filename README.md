@@ -77,50 +77,37 @@ CSV 예시(UTF-8, 최대 1MB):
 
 ## Spring Boot 연결
 
-홍보·고객응대·경영 화면의 기본은 `demo` 모드입니다. 정책 채팅은 이 값과 무관하게 백엔드를 호출합니다. 다른 비서를 실제 연결 시 `.env.example`을 `.env.local`로 복사하고 아래 값을 설정한 뒤 개발 서버를 다시 시작하세요.
+Vite는 `/api` 요청을 `http://127.0.0.1:8000`의 인접 `am-erica-backend`로 전달합니다.
+로그인 토큰과 계정에 저장된 가게 ID를 사용합니다. Python AI는 Spring Boot 뒤의 내부 서비스입니다.
+비서별 API 연결은 `src/services/`의 전용 서비스를 참고하세요.
 
-```dotenv
-VITE_API_MODE=live
+### 고객응대 · Scrable
+
+`http://localhost:7001/#customer`에서 리뷰를 입력하고 **리뷰 답글 만들기**를 누릅니다.
+`VITE_API_MODE=demo`여도 고객응대는 실제 백엔드를 호출하므로 모드 변경이 필요 없습니다.
+`src/services/customer.ts`가 다음 요청을 보내며, 가게 소유권은 백엔드가 확인합니다.
+
+```http
+POST /api/stores/{storeId}/ai/customer/reply
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{"reviewText":"음료가 늦게 나왔어요.","tone":"정중하고 따뜻하게"}
 ```
 
-Vite가 `/api` 요청을 `http://127.0.0.1:8000`으로 프록시합니다. Spring Boot 백엔드는 다음 엔드포인트를 제공합니다.
+백엔드가 Scrable의 gRPC `CustomerAssistant.DraftReply`를 호출하고 반환한 `reply`를
+오른쪽 초안 칸에 표시합니다. 리뷰는 최대 2,000자, 프론트의 대기는 최대 330초입니다.
+현재 Mac에서는 생성에 수십 초~2분 정도 걸리며, 오류가 나면 예시 문안으로 대체하지 않습니다.
+결과는 수정·복사·다운로드할 수 있고 최초 생성본을 이용 내역에 보관합니다. 자동 게시하지 않습니다.
+현재 화면은 별점 입력을 받지 않으므로 별점 기반 `sentiment`는 표시하지 않습니다.
 
-```text
-POST /api/assistants/policy
-POST /api/assistants/marketing
-POST /api/assistants/customer
-POST /api/assistants/sales
-```
+Scrable을 먼저 `bash scripts/run_local.sh start`로 켜 두세요. 백엔드의 고객응대 연결은
+`AI_CUSTOMER_HOST`, `AI_CUSTOMER_PORT`, `AI_CUSTOMER_MOCK_ENABLED`, `AI_CUSTOMER_DEADLINE`,
+`AI_CUSTOMER_KEY_FILE`로 설정합니다. 로컬 상세 설정은 백엔드 README와 Scrable의
+`RUN_SERVE.md`를 참고하세요. 내부 키와 모델 인증 토큰은 프론트에 전달하지 않습니다.
 
-요청 형식:
-
-```json
-{
-  "message": "가게 운영자금 지원을 찾고 있어요.",
-  "format": "지원 정책 탐색",
-  "profile": {
-    "name": "오후의 커피",
-    "owner": "김가게",
-    "category": "카페",
-    "region": "서울 마포구"
-  }
-}
-```
-
-응답 형식:
-
-```json
-{
-  "text": "답변 본문",
-  "sources": [{ "title": "근거 문서 제목", "url": "https://example.com/source" }]
-}
-```
-
-`sources`는 선택 필드이며 http/https 링크만 표시합니다. RAG 비서는 실제 검색 출처를 이 필드에 반환하세요. 매출 비서는 `message`에 CSV 문자열을 전달합니다. 연결 모드에서 오류가 발생하면 사용자에게 오류를 표시하며 체험 결과로 대체하지 않습니다. 요청 제한 시간은 30초입니다. 배포 환경에서는 `/api`를 Spring Boot로 전달하는 리버스 프록시를 구성해야 합니다. 네이버 인증 코드 교환은 인접 백엔드에 구현되어 있으며, 실제 이용에는 서버 실행과 인증 정보 설정이 필요합니다.
-
-
-백엔드는 인접한 `am-erica-backend` 프로젝트에서 실행합니다. 기본 localhost 개발 모드는 로그인 없이 연결되며, `prod` 모드에서는 회원가입/로그인 후 `Authorization: Bearer <access_token>` 헤더가 필요합니다. 프론트엔드는 네이버 로그인 UI와 Bearer 토큰 전달을 지원합니다. 네이버 인증 코드 교환 엔드포인트는 아래 규격으로 백엔드에 구현되어 있습니다. 매장별 저장을 사용하는 API는 `store_id`를 지원하며, 기존 `profile` 요청도 개인 작업으로 호환됩니다. Python AI 서버는 Spring Boot 뒤의 내부 서비스로 실행합니다.
-
+배포 시에도 `/api`를 Spring Boot로 전달하는 리버스 프록시가 필요하며,
+고객응대 경로의 프록시 대기 시간은 모델 생성 시간을 고려해야 합니다.
 
 ## 네이버 로그인 설정 및 백엔드 연동
 
