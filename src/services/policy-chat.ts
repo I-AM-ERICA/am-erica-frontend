@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import type { AssistantResult, StoreProfile } from '../types'
 
@@ -84,7 +85,7 @@ export function policyError(code: unknown): string {
 
 export async function checkedFetch(path: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
   const headers = { ...getAuthHeaders(), ...init.headers }
-  const response = await fetch(path, { ...init, headers, signal })
+  const response = await apiFetch(path, { ...init, headers, signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) {
     const problem = await response.json().catch(() => null) as { code?: string } | null

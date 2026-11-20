@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import type { StoreProfile } from '../types'
 
@@ -94,7 +95,7 @@ function promotionPath(profile: StoreProfile) {
   return `/api/stores/${profile.id}/ai/promotion/drafts`
 }
 async function promotionRequest(path: string, signal: AbortSignal, body?: unknown): Promise<unknown> {
-  const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST', signal,
+  const response = await apiFetch(path, { method: body === undefined ? 'GET' : 'POST', signal,
     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body) })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }

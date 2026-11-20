@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import { draftCustomerReply } from './customer'
 import type { AssistantId, AssistantResult, StoreProfile } from '../types'
@@ -64,7 +65,7 @@ function demoResult(id: AssistantId, request: AssistantRequest): AssistantResult
 export async function runAssistant(id: AssistantId, request: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
   if (id === 'customer') return draftCustomerReply(request.message, request.profile, signal)
   if (!isLiveMode) return demoResult(id, request)
-  const response = await fetch(`/api/assistants/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(request), signal })
+  const response = await apiFetch(`/api/assistants/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(request), signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) throw new Error(`비서 연결에 실패했어요 (${response.status}). 잠시 후 다시 시도해 주세요.`)
   const data: unknown = await response.json()

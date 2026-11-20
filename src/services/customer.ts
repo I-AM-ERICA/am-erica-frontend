@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import type { AssistantResult, StoreProfile } from '../types'
 
@@ -5,7 +6,7 @@ export async function draftCustomerReply(review: string, profile: StoreProfile, 
   if (!Number.isSafeInteger(profile.id) || profile.id! <= 0) throw new Error('가게 정보를 먼저 저장해 주세요.')
   const reviewText = review.trim()
   if (!reviewText || reviewText.length > 2000) throw new Error('고객 리뷰를 1~2,000자로 입력해 주세요.')
-  const response = await fetch(`/api/stores/${profile.id}/ai/customer/reply`, {
+  const response = await apiFetch(`/api/stores/${profile.id}/ai/customer/reply`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ reviewText, tone: '정중하고 따뜻하게' }), signal,
   })

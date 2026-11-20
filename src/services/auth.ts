@@ -1,4 +1,5 @@
 import { readRoute } from './navigation'
+import { apiFetch } from './api'
 import type { AppPage } from '../types'
 
 export interface AuthUser { id: number; name: string; email: string }
@@ -37,7 +38,7 @@ export function getAuthHeaders(): Record<string, string> {
 export function getSessionExpiresAt(): number | null { return session?.expiresAt ?? null }
 
 async function authRequest(path: string, init: RequestInit = {}) {
-  const response = await fetch(path, { ...init, signal: AbortSignal.timeout(15000), cache: 'no-store' })
+  const response = await apiFetch(path, { ...init, signal: AbortSignal.timeout(15000), cache: 'no-store' })
   if (!response.ok) {
     if (response.status === 401) logout()
     const problem = await response.json().catch(() => null) as { code?: string } | null
@@ -63,7 +64,8 @@ async function loadUser(): Promise<AuthUser> {
 export function startNaverLogin(returnTo: AppPage = 'setup') {
   const clientId = import.meta.env.VITE_NAVER_CLIENT_ID?.trim()
   if (!clientId) throw new Error('네이버 로그인 연결을 준비 중이에요. 잠시 후 다시 이용해 주세요.')
-  const redirectUri = import.meta.env.VITE_NAVER_REDIRECT_URI?.trim() || `${window.location.origin}/api/auth/callback/naver`
+  const defaultCallback = import.meta.env.PROD ? import.meta.env.BASE_URL : '/api/auth/callback/naver'
+  const redirectUri = import.meta.env.VITE_NAVER_REDIRECT_URI?.trim() || new URL(defaultCallback, window.location.origin).href
   const redirect = new URL(redirectUri)
   if (redirect.origin !== window.location.origin || redirect.hash || redirect.search) throw new Error('로그인 연결 설정을 확인해 주세요.')
   const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, '0')).join('')

@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import { isStaffPreferences } from './staff'
 import type { StaffGender, StaffPreferences } from './staff'
@@ -18,7 +19,7 @@ function parseSettings(value: unknown): AccountSettings {
   return { store: store as unknown as StoreProfile, staffPreferences: data.staffPreferences }
 }
 async function request(path: string, init: RequestInit, signal: AbortSignal): Promise<unknown> {
-  const response = await fetch(path, { ...init, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+  const response = await apiFetch(path, { ...init, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]), cache: 'no-store' })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) throw new Error('계정 설정을 저장하거나 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')

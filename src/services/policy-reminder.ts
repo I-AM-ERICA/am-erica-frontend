@@ -1,3 +1,4 @@
+import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import { resolveStore } from './policy-chat'
 import type { StoreProfile } from '../types'
@@ -12,7 +13,7 @@ export interface PolicyReminderSettings {
   lastSentDate: string | null
 }
 async function request(init: RequestInit, signal: AbortSignal): Promise<PolicyReminderSettings> {
-  const response = await fetch('/api/me/policy-reminder', { ...init, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, signal })
+  const response = await apiFetch('/api/me/policy-reminder', { ...init, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) {
     const problem = await response.json().catch(() => null)
@@ -40,7 +41,7 @@ export async function setPolicyReminder(enabled: boolean, profile: StoreProfile,
 export interface PolicyDeliveryResult { email: string; content: string }
 export async function sendPolicyDigest(profile: StoreProfile, signal: AbortSignal, conversationId?: number): Promise<PolicyDeliveryResult> {
   const storeId = conversationId ? undefined : await resolveStore(profile, signal)
-  const response = await fetch(conversationId ? `/api/me/policy/conversations/${conversationId}/email` : '/api/me/policy-reminder/send-now', {
+  const response = await apiFetch(conversationId ? `/api/me/policy/conversations/${conversationId}/email` : '/api/me/policy-reminder/send-now', {
     method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(conversationId ? { clientMessageId: crypto.randomUUID() } : { storeId }), signal,
   })

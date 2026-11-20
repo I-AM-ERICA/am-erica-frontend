@@ -23,6 +23,41 @@ npm run preview
 
 `build`는 TypeScript 검사 후 `dist/`에 배포 파일을 생성합니다. `preview`도 7001번 포트를 사용합니다.
 
+## GitHub Pages 배포
+
+배포 주소: https://i-am-erica.github.io/am-erica-frontend/
+
+GitHub 저장소의 **Settings → Pages → Source → GitHub Actions**를 선택합니다.
+`main`에 push하면 `.github/workflows/deploy-pages.yml`이 Node.js 22에서 의존성 설치,
+테스트, 빌드, Pages 배포를 순서대로 실행합니다. Actions 화면에서 수동 실행도 가능합니다.
+`npm run build`만 실행하면 로컬 `dist/`가 만들어지며 인터넷에 게시되지는 않습니다.
+
+워크플로는 Pages 경로에 맞춰 Vite의 `base`를 설정합니다. 같은 경로로 로컬 빌드하려면:
+
+```bash
+npm run build -- --base=/am-erica-frontend/
+```
+
+**Settings → Secrets and variables → Actions → Variables**에 다음 공개 설정을 등록하고
+워크플로를 다시 실행합니다. 값은 빌드 시 번들에 포함되므로 비밀키를 넣지 않습니다.
+
+| 변수 | 값 |
+|---|---|
+| `VITE_API_BASE_URL` | 네이버 백엔드의 HTTPS 원점. 예: `https://api.example.com` (`/api` 제외) |
+| `VITE_NAVER_CLIENT_ID` | 네이버 로그인 공개 Client ID |
+| `VITE_NAVER_REDIRECT_URI` | `https://i-am-erica.github.io/am-erica-frontend/` (생략하면 배포 앱 루트 사용) |
+| `VITE_STAFF_IMAGE_BASE_URL` | 선택. 공개 스태프 이미지 폴더 URL |
+
+백엔드 연결 전에는 소개·로그인 화면을 먼저 배포할 수 있지만 실제 로그인과 AI 기능은 사용할 수 없습니다.
+로컬 `.env`는 GitHub에 업로드하지 않으며 GitHub 빌드에 자동 반영되지 않습니다.
+백엔드 배포 후 CORS에 `https://i-am-erica.github.io`를 허용하고,
+네이버 개발자센터 및 백엔드의 로그인 콜백도 위 주소와 일치시켜야 합니다.
+Pages는 `/api` 프록시를 제공하지 않습니다. 생성 이미지 URL 역시 브라우저가 접근 가능한 HTTPS여야 합니다.
+Pages에서는 기존 `/api/auth/callback/naver` 대신 앱 루트로 콜백을 받아 404를 방지합니다.
+로컬 개발의 Vite 프록시와 기존 로컬 로그인 콜백은 유지합니다.
+
+공식 안내: https://vite.dev/guide/static-deploy.html#github-pages
+
 ## 구성
 
 ```text
