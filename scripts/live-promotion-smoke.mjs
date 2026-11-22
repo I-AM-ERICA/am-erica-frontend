@@ -1,6 +1,5 @@
 // Existing frontend adapter -> Vite -> authenticated Spring -> Promotion-AI -> CLOVA.
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { createServer } from 'vite'
 const base = process.env.PROMOTION_APP_URL || 'http://127.0.0.1:7001'
@@ -9,11 +8,11 @@ const storage = new Map()
 globalThis.fetch = (input, init) => nativeFetch(typeof input === 'string' ? new URL(input, base) : input, init)
 globalThis.sessionStorage = { getItem: k => storage.get(k) ?? null, setItem: (k,v) => storage.set(k,v), removeItem: k => storage.delete(k) }
 globalThis.window = { location: new URL(base), dispatchEvent() {} }
+const token = process.env.PROMOTION_SMOKE_TOKEN
+assert.ok(token, 'Set PROMOTION_SMOKE_TOKEN for an existing verified test account; store data will be changed')
 const server = await createServer({ configFile:false, server:{ middlewareMode:true, hmr:false, ws:false }, optimizeDeps:{noDiscovery:true,include:[]}, appType:'custom' })
 try {
-  const login = await fetch('/api/auth/signup', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:`${randomUUID()}@promotion-test.invalid`,password:randomUUID(),name:'홍보 연동 테스트'})})
-  assert.equal(login.status,201,'Local test signup must succeed')
-  const session = await login.json()
+  const session = { accessToken: token, expiresIn: 3600 }
   sessionStorage.setItem('gage-auth-session',JSON.stringify({accessToken:session.accessToken,expiresAt:Date.now()+session.expiresIn*1000}))
   const auth = await server.ssrLoadModule('/src/services/auth.ts')
   assert.ok((await auth.initializeAuth()).user?.id)

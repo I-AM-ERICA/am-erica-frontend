@@ -21,3 +21,24 @@
 .login-footer { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 25px 22px; }
 .login-footer .footer { border: 0; }
 @media (max-width: 600px) { .login-header { padding: 16px 20px; } .login-brand { font-size: 24px; } .login-back { font-size: 12px; } .login-main { padding: 24px 18px 40px; } .login-card { padding: 32px 22px 25px; } .login-card h1 { font-size: 27px; } .login-description { font-size: 13px; } }
+.login-modes { display: flex; gap: 4px; padding: 4px; margin-bottom: 24px; background: #f2f5ed; border-radius: 8px; }
+.login-modes button { flex: 1; padding: 12px 6px; border-radius: 6px; font-size: 14px; color: #53684b; }
+.login-modes button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 5px #263c3212; font-weight: 800; }
+.email-auth-form { display: grid; gap: 16px; text-align: left; }
+.email-auth-form label { display: grid; gap: 8px; font-size: 13px; font-weight: 700; }
+.email-auth-form input { width: 100%; min-width: 0; min-height: 46px; padding: 11px 12px; border: 1px solid #cdd8c6; border-radius: 6px; color: #263c32; background: #fff; font: inherit; font-size: 16px; font-weight: 400; }
+.email-auth-form input:focus-visible { outline: 2px solid #51785e; outline-offset: 2px; }
+.email-auth-form input[readonly] { background: #f2f5ed; }
+.email-auth-hint { margin-top: -10px; font-size: 12px; color: #60715f; }
+.email-auth-link { justify-self: start; margin-top: -8px; text-decoration: underline; font-size: 12px; }
+.email-auth-submit { width: 100%; min-height: 50px; padding: 14px; color: #fff; background: #315441; border-radius: 6px; font-size: 15px; font-weight: 800; }
+.email-auth-submit:hover:not(:disabled) { background: #244231; }
+.login-card button:disabled { cursor: not-allowed; opacity: .6; }
+.email-auth-notice { padding: 12px; border-radius: 6px; background: #eef3e8; font-size: 13px; line-height: 1.7; }
+.email-auth-form .login-error { margin-top: 0; }
+.email-verification { padding: 16px; border-radius: 8px; background: #f5f7f1; }
+.email-code-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 12px; font-size: 12px; }
+.email-code-actions button { text-decoration: underline; min-height: 32px; }
+.email-code-actions span { align-self: center; }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; font-size: 12px; color: #72806b; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; border-top: 1px solid #e0e6d8; }

@@ -43,6 +43,14 @@ async function authRequest(path: string, init: RequestInit = {}) {
     if (response.status === 401) logout()
     const problem = await response.json().catch(() => null) as { code?: string } | null
     const messages: Record<string, string> = {
+      EMAIL_TAKEN: '이미 가입된 이메일이에요. 기존 로그인 방식을 이용해 주세요.',
+      INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않아요.',
+      INVALID_VERIFICATION: '인증번호가 틀렸거나 만료되었어요. 5회 실패했다면 새 번호를 받아 주세요.',
+      VERIFICATION_RATE_LIMITED: '인증번호 요청이 많아요. 1분 이상 기다려 주세요. 한 시간에 최대 5회 받을 수 있어요.',
+      SIGNUP_MAIL_UNAVAILABLE: '인증 메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+      LOGIN_RATE_LIMITED: '로그인 시도가 많아요. 15분 후 다시 시도해 주세요.',
+      PASSWORD_TOO_LONG: '비밀번호가 너무 길어요. 영문·숫자는 72자, 한글은 24자 이내로 입력해 주세요.',
+      VALIDATION_FAILED: '이메일, 이름, 비밀번호와 인증번호를 확인해 주세요.',
       NAVER_NOT_CONFIGURED: '네이버 로그인 연결을 준비 중이에요. 잠시 후 다시 이용해 주세요.',
       NAVER_INVALID_REDIRECT: '로그인 콜백 주소 설정을 확인해 주세요.',
       NAVER_AUTH_FAILED: '네이버 인증이 만료되었거나 거부되었어요. 다시 로그인해 주세요.',
@@ -101,10 +109,7 @@ async function completeNaverLogin(): Promise<AuthResult> {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, state: attempt.state, redirectUri: attempt.redirectUri }),
   }) as { accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown } | null
-  if (!data || typeof data.accessToken !== 'string' || !data.accessToken || data.tokenType !== 'Bearer' || typeof data.expiresIn !== 'number' || !Number.isFinite(data.expiresIn) || data.expiresIn <= 0 || data.expiresIn > 31536000) throw new Error('로그인 서버 응답을 확인하지 못했어요. 다시 시도해 주세요.')
-  session = { accessToken: data.accessToken, expiresAt: Date.now() + data.expiresIn * 1000 }
-  const user = await loadUser()
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch { /* Current visit remains authenticated. */ }
+  const user = await acceptToken(data)
   return { user, returnTo: readRoute(`#${attempt.returnTo}`) }
 }
 
@@ -122,4 +127,46 @@ export function initializeAuth(): Promise<AuthResult> {
     }
   })()
   return initialization
+}
+
+interface TokenPayload { accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown }
+async function acceptToken(data: TokenPayload | null): Promise<AuthUser> {
+  if (!data || typeof data.accessToken !== 'string' || !data.accessToken || data.tokenType !== 'Bearer' || typeof data.expiresIn !== 'number' || !Number.isFinite(data.expiresIn) || data.expiresIn <= 0 || data.expiresIn > 31536000) throw new Error('로그인 서버 응답을 확인하지 못했어요. 다시 시도해 주세요.')
+  session = { accessToken: data.accessToken, expiresAt: Date.now() + data.expiresIn * 1000 }
+  const user = await loadUser()
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch { /* Current visit remains authenticated. */ }
+  return user
+}
+
+export interface EmailChallenge { verificationId: string; expiresIn: number; resendAfter: number }
+export async function requestSignupCode(email: string): Promise<EmailChallenge> {
+  const data = await authRequest('/api/auth/signup/email-code', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }),
+  }) as Partial<EmailChallenge> | null
+  if (!data || typeof data.verificationId !== 'string' || !/^[a-f0-9]{64}$/.test(data.verificationId)
+      || typeof data.expiresIn !== 'number' || !Number.isFinite(data.expiresIn) || data.expiresIn <= 0 || data.expiresIn > 3600
+      || typeof data.resendAfter !== 'number' || !Number.isFinite(data.resendAfter) || data.resendAfter < 0 || data.resendAfter > 3600) {
+    throw new Error('인증 메일 요청 결과를 확인하지 못했어요. 다시 요청해 주세요.')
+  }
+  return data as EmailChallenge
+}
+async function emailSession(path: string, body: object): Promise<AuthUser> {
+  try {
+    const data = await authRequest(path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }) as TokenPayload | null
+    return await acceptToken(data)
+  } catch (error) {
+    logout()
+    if (error instanceof TypeError || (error instanceof Error && error.name === 'TimeoutError')) {
+      throw new Error('서버 응답을 확인하지 못했어요. 가입을 제출한 뒤라면 이메일 로그인도 확인해 주세요.')
+    }
+    throw error
+  }
+}
+export function loginWithEmail(email: string, password: string): Promise<AuthUser> {
+  return emailSession('/api/auth/login', { email: email.trim(), password })
+}
+export function signupWithEmail(email: string, password: string, name: string, verificationId: string, code: string): Promise<AuthUser> {
+  return emailSession('/api/auth/signup', { email: email.trim(), password, name: name.trim(), verificationId, code })
 }

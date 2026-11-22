@@ -154,3 +154,56 @@ test('backend configuration and account conflict errors remain actionable', asyn
     })
   }
 })
+
+test('email verification does not store credentials or create a session', async (t) => {
+  await withAuth(t, { response: () => Response.json({ verificationId: 'a'.repeat(64), expiresIn: 600, resendAfter: 60 }) }, async ({ auth, calls, storage }) => {
+    const challenge = await auth.requestSignupCode(' owner@example.com ')
+    assert.equal(challenge.expiresIn, 600)
+    assert.equal(calls[0].path, '/api/auth/signup/email-code')
+    assert.deepEqual(JSON.parse(calls[0].options.body), { email: 'owner@example.com' })
+    assert.equal(storage.size, 0)
+    assert.deepEqual(auth.getAuthHeaders(), {})
+  })
+})
+
+test('verified signup and email login verify the user before persisting a session', async (t) => {
+  for (const signup of [true, false]) {
+    await withAuth(t, { response: path => Response.json(path === '/api/users/me' ? { id: 42, name: '사장', email: 'owner@example.com' } : { accessToken: 'email-token', tokenType: 'Bearer', expiresIn: 3600 }) }, async ({ auth, calls, storage }) => {
+      const user = signup ? await auth.signupWithEmail('owner@example.com', 'password123!', ' 사장 ', 'a'.repeat(64), '123456') : await auth.loginWithEmail('owner@example.com', 'password123!')
+      assert.equal(user.id, 42)
+      assert.equal(calls[0].path, signup ? '/api/auth/signup' : '/api/auth/login')
+      assert.equal(calls[1].path, '/api/users/me')
+      assert.equal(calls[1].options.headers.Authorization, 'Bearer email-token')
+      if (signup) {
+        const body = JSON.parse(calls[0].options.body)
+        assert.equal(body.verificationId, 'a'.repeat(64))
+        assert.equal(body.code, '123456')
+        assert.equal(body.name, '사장')
+      }
+      const saved = JSON.parse(storage.get('gage-auth-session'))
+      assert.deepEqual(Object.keys(saved).sort(), ['accessToken', 'expiresAt'])
+      assert.doesNotMatch(JSON.stringify([...storage]), /password123|123456/)
+    })
+  }
+})
+
+test('email errors are actionable and never leave an authenticated session', async (t) => {
+  for (const [code, status, message] of [['INVALID_VERIFICATION', 400, /인증번호/], ['EMAIL_TAKEN', 409, /이미 가입/], ['SIGNUP_MAIL_UNAVAILABLE', 503, /메일/], ['LOGIN_RATE_LIMITED', 429, /15분/]]) {
+    await withAuth(t, { response: () => Response.json({ code, detail: 'private backend details' }, { status }) }, async ({ auth, storage }) => {
+      await assert.rejects(auth.signupWithEmail('owner@example.com', 'password123!', '사장', 'a'.repeat(64), '123456'), message)
+      assert.equal(storage.size, 0)
+      assert.deepEqual(auth.getAuthHeaders(), {})
+    })
+  }
+})
+
+test('bad proof responses and user lookup failures cannot authenticate email users', async (t) => {
+  await withAuth(t, { response: () => Response.json({ verificationId: 'short', expiresIn: 600, resendAfter: 60 }) }, async ({ auth }) => {
+    await assert.rejects(auth.requestSignupCode('owner@example.com'), /확인하지 못했어요/)
+  })
+  await withAuth(t, { response: path => path === '/api/users/me' ? Response.json({ code: 'INVALID_CREDENTIALS' }, { status: 401 }) : Response.json({ accessToken: 'token', tokenType: 'Bearer', expiresIn: 600 }) }, async ({ auth, storage }) => {
+    await assert.rejects(auth.loginWithEmail('owner@example.com', 'password123!'))
+    assert.equal(storage.size, 0)
+    assert.deepEqual(auth.getAuthHeaders(), {})
+  })
+})

@@ -1,7 +1,6 @@
 // Real frontend service -> Vite proxy -> authenticated Spring -> Python gRPC -> SerpAPI.
-// Creates test accounts in the local backend. Does not send mail or save login tokens.
+// Uses two existing verified test accounts. Changes store/chat data; does not send mail or save tokens.
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
 import { createServer } from 'vite'
 
@@ -16,18 +15,16 @@ globalThis.sessionStorage = {
 }
 globalThis.window = { location: new URL(base), dispatchEvent() {} }
 
-async function signup() {
-  const response = await fetch('/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: `${randomUUID()}@integration.invalid`, password: randomUUID(), name: '연동 테스트' }) })
-  assert.equal(response.status, 201, 'Local test signup must succeed')
-  return response.json()
-}
+const primaryToken = process.env.POLICY_SMOKE_TOKEN
+const otherToken = process.env.POLICY_SMOKE_OTHER_TOKEN
+assert.ok(primaryToken && otherToken && primaryToken !== otherToken,
+  'Set POLICY_SMOKE_TOKEN and POLICY_SMOKE_OTHER_TOKEN for two different verified test accounts')
 
 const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false },
   optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
 try {
   assert.equal((await fetch('/')).status, 200)
-  const session = await signup()
+  const session = { accessToken: primaryToken, expiresIn: 3600 }
   sessionStorage.setItem('gage-auth-session', JSON.stringify({ accessToken: session.accessToken,
     expiresAt: Date.now() + session.expiresIn * 1000 }))
   const auth = await server.ssrLoadModule('/src/services/auth.ts')
@@ -50,13 +47,13 @@ try {
   assert.equal(unauthenticated.status, 401)
   const invalidTopK = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ question, topK: 6 }) })
   assert.equal(invalidTopK.status, 400)
-  const other = await signup()
+  const other = { accessToken: otherToken }
   const unauthorized = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${other.accessToken}` }, body: JSON.stringify({ question }) })
   assert.ok([403, 404].includes(unauthorized.status), 'Another account must not access this store')
   const report = { status: 'passed', question, answer: answer.text, sources: answer.sources, sseUpdates: updates,
     checks: { frontendAuthentication: true, storeCreation: true, realPolicyAnswer: true, sourceUrls: true,
       unauthenticatedRejected: true, otherAccountRejected: true, invalidTopKRejected: true },
-    note: 'Uses local test signup to verify JWT/session handling; live Naver OAuth login is not tested.' }
+    note: 'Uses existing verified test-account JWTs; signup, email delivery and live Naver OAuth are not tested.' }
   if (process.env.POLICY_SMOKE_OUTPUT) await writeFile(process.env.POLICY_SMOKE_OUTPUT, JSON.stringify(report, null, 2))
   console.log(JSON.stringify({ status: report.status, sseUpdates: updates, sourceUrls: answer.sources.map(s => s.url), checks: report.checks }, null, 2))
 } finally {
