@@ -2,7 +2,7 @@ import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import type { AssistantResult, StoreProfile } from '../types'
 
-export interface CustomerReplyOptions { rating?: number; tone?: string }
+export interface CustomerReplyOptions { rating?: number; tone?: string; storeInfo?: string }
 
 export async function draftCustomerReply(review: string, profile: StoreProfile, signal?: AbortSignal, options: CustomerReplyOptions = {}): Promise<AssistantResult> {
   if (!Number.isSafeInteger(profile.id) || profile.id! <= 0) throw new Error('가게 정보를 먼저 저장해 주세요.')
@@ -13,9 +13,11 @@ export async function draftCustomerReply(review: string, profile: StoreProfile, 
   const rawTone = options.tone ?? '정중하고 따뜻하게'
   if (typeof rawTone !== 'string' || rawTone.length > 30) throw new Error('답글 말투는 30자 이내로 입력해 주세요.')
   const tone = rawTone.trim().replace(/\s+/g, ' ')
+  const storeInfo = (options.storeInfo ?? '').trim()
+  if (storeInfo.length > 2000) throw new Error('가게 정보는 2,000자 이내로 입력해 주세요.')
   const response = await apiFetch(`/api/stores/${profile.id}/ai/customer/reply`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ reviewText, rating, tone }), signal,
+    body: JSON.stringify({ reviewText, rating, tone, ...(storeInfo ? { storeInfo } : {}) }), signal,
   })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
   if (!response.ok) {

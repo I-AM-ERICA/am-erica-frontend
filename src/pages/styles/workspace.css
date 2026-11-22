@@ -82,6 +82,6 @@ textarea::placeholder, input::placeholder { color: #b1b7a7; }
 
 .customer-reply-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .customer-reply-options > div { min-width: 0; }
-.customer-reply-options label span { font-weight: normal; color: var(--muted); }
+.customer-reply-options label span, .customer-store-info label span { font-weight: normal; color: var(--muted); }
 .customer-reply-summary { padding: 12px 16px; margin-bottom: 12px; border-radius: 8px; background: #f0f3e9; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 @media (max-width: 700px) { .customer-reply-options { grid-template-columns: 1fr; gap: 0; } }
