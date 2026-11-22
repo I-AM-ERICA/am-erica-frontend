@@ -9,6 +9,7 @@ export interface AuthResult { user: AuthUser | null; returnTo?: AppPage; error?:
 
 const SESSION_KEY = 'gage-auth-session'
 const ATTEMPT_KEY = 'gage-naver-attempt'
+const REGISTRATION_KEY = 'gage-naver-registration'
 const ATTEMPT_TTL = 10 * 60 * 1000
 export const AUTH_CHANGED = 'gage-auth-changed'
 let session: Session | null = null
@@ -29,6 +30,7 @@ export function logout() {
   session = null
   removeStored(SESSION_KEY)
   removeStored(ATTEMPT_KEY)
+  clearNaverRegistration()
   window.dispatchEvent(new Event(AUTH_CHANGED))
 }
 export function getAuthHeaders(): Record<string, string> {
@@ -43,20 +45,20 @@ async function authRequest(path: string, init: RequestInit = {}) {
     if (response.status === 401) logout()
     const problem = await response.json().catch(() => null) as { code?: string } | null
     const messages: Record<string, string> = {
-      EMAIL_TAKEN: '이미 가입된 이메일이에요. 기존 로그인 방식을 이용해 주세요.',
-      INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않아요.',
       INVALID_VERIFICATION: '인증번호가 틀렸거나 만료되었어요. 5회 실패했다면 새 번호를 받아 주세요.',
       VERIFICATION_RATE_LIMITED: '인증번호 요청이 많아요. 1분 이상 기다려 주세요. 한 시간에 최대 5회 받을 수 있어요.',
       SIGNUP_MAIL_UNAVAILABLE: '인증 메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
-      LOGIN_RATE_LIMITED: '로그인 시도가 많아요. 15분 후 다시 시도해 주세요.',
-      PASSWORD_TOO_LONG: '비밀번호가 너무 길어요. 영문·숫자는 72자, 한글은 24자 이내로 입력해 주세요.',
-      VALIDATION_FAILED: '이메일, 이름, 비밀번호와 인증번호를 확인해 주세요.',
+      VALIDATION_FAILED: '로그인 요청과 인증번호를 확인해 주세요.',
+      NAVER_EMAIL_REQUIRED: '처음 가입할 때는 네이버 이메일 제공 동의가 필요해요. 네이버 계정의 이메일 정보를 확인한 후 다시 로그인해 주세요.',
+      NAVER_REGISTRATION_EXPIRED: '가입 인증 요청이 만료되었어요. 네이버로 다시 로그인해 주세요.',
+      NAVER_LOGIN_REQUIRED: '네이버로 로그인해 주세요.',
       NAVER_NOT_CONFIGURED: '네이버 로그인 연결을 준비 중이에요. 잠시 후 다시 이용해 주세요.',
       NAVER_INVALID_REDIRECT: '로그인 콜백 주소 설정을 확인해 주세요.',
       NAVER_AUTH_FAILED: '네이버 인증이 만료되었거나 거부되었어요. 다시 로그인해 주세요.',
       NAVER_EMAIL_CONFLICT: '같은 이메일로 가입된 계정이 있어요. 계정 연결은 별도 확인이 필요해요.',
       NAVER_INVALID_PROFILE: '네이버 회원 정보를 확인하지 못했어요. 다시 시도해 주세요.',
     }
+    if (problem?.code === 'NAVER_REGISTRATION_EXPIRED') clearNaverRegistration()
     throw new Error((problem?.code && messages[problem.code]) || (response.status === 401
       ? '로그인이 만료되었어요. 다시 로그인해 주세요.'
       : '로그인 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'))
@@ -79,6 +81,7 @@ export function startNaverLogin(returnTo: AppPage = 'setup') {
   const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, '0')).join('')
   const attempt: LoginAttempt = { state, createdAt: Date.now(), redirectUri, returnTo: returnTo === 'login' || returnTo === 'intro' ? 'setup' : returnTo }
   try { sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify(attempt)) } catch { throw new Error('로그인하려면 브라우저의 사이트 저장 공간을 허용해 주세요.') }
+  clearNaverRegistration()
   const url = new URL('https://nid.naver.com/oauth2.0/authorize')
   url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirectUri, state }).toString()
   window.location.assign(url.toString())
@@ -108,7 +111,20 @@ async function completeNaverLogin(): Promise<AuthResult> {
   const data = await authRequest('/api/auth/naver', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, state: attempt.state, redirectUri: attempt.redirectUri }),
-  }) as { accessToken?: unknown; tokenType?: unknown; expiresIn?: unknown } | null
+  }) as (TokenPayload & { verificationRequired?: boolean; registrationToken?: unknown; email?: unknown }) | null
+  if (data?.verificationRequired === true) {
+    if (typeof data.registrationToken !== 'string' || !/^[a-f0-9]{64}$/.test(data.registrationToken)
+        || typeof data.email !== 'string' || !data.email.includes('@')
+        || typeof data.expiresIn !== 'number' || !Number.isFinite(data.expiresIn) || data.expiresIn <= 0 || data.expiresIn > 3600) {
+      throw new Error('가입 인증 정보를 확인하지 못했어요. 네이버로 다시 로그인해 주세요.')
+    }
+    session = null
+    removeStored(SESSION_KEY)
+    saveRegistration({ registrationToken: data.registrationToken, email: data.email,
+      expiresAt: Date.now() + data.expiresIn * 1000, returnTo: readRoute(`#${attempt.returnTo}`) })
+    return { user: null, returnTo: 'login' }
+  }
+  clearNaverRegistration()
   const user = await acceptToken(data)
   return { user, returnTo: readRoute(`#${attempt.returnTo}`) }
 }
@@ -138,35 +154,68 @@ async function acceptToken(data: TokenPayload | null): Promise<AuthUser> {
   return user
 }
 
-export interface EmailChallenge { verificationId: string; expiresIn: number; resendAfter: number }
-export async function requestSignupCode(email: string): Promise<EmailChallenge> {
-  const data = await authRequest('/api/auth/signup/email-code', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }),
-  }) as Partial<EmailChallenge> | null
+export interface NaverRegistration {
+  registrationToken: string
+  email: string
+  expiresAt: number
+  returnTo: AppPage
+  challenge?: { id: string; expiresAt: number; resendAt: number }
+}
+export function clearNaverRegistration() { removeStored(REGISTRATION_KEY) }
+function saveRegistration(value: NaverRegistration) {
+  try { sessionStorage.setItem(REGISTRATION_KEY, JSON.stringify(value)) }
+  catch { throw new Error('인증을 진행하려면 브라우저의 사이트 저장 공간을 허용해 주세요.') }
+}
+export function getNaverRegistration(): NaverRegistration | null {
+  const value = readStored(REGISTRATION_KEY) as Partial<NaverRegistration> | null
+  if (!value || typeof value.registrationToken !== 'string' || !/^[a-f0-9]{64}$/.test(value.registrationToken)
+      || typeof value.email !== 'string' || typeof value.expiresAt !== 'number' || value.expiresAt <= Date.now()) {
+    clearNaverRegistration(); return null
+  }
+  const challenge = value.challenge
+  if (challenge && (typeof challenge.id !== 'string' || !/^[a-f0-9]{64}$/.test(challenge.id)
+      || !Number.isFinite(challenge.expiresAt) || !Number.isFinite(challenge.resendAt))) delete value.challenge
+  return { ...value, returnTo: readRoute(`#${value.returnTo}`) } as NaverRegistration
+}
+function requireRegistration(): NaverRegistration {
+  const value = getNaverRegistration()
+  if (!value) throw new Error('가입 인증 요청이 만료되었어요. 네이버로 다시 로그인해 주세요.')
+  return value
+}
+export async function requestNaverSignupCode(): Promise<NaverRegistration> {
+  const registration = requireRegistration()
+  const data = await authRequest('/api/auth/naver/email-code', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ registrationToken: registration.registrationToken }),
+  }) as { verificationId?: unknown; expiresIn?: unknown; resendAfter?: unknown } | null
   if (!data || typeof data.verificationId !== 'string' || !/^[a-f0-9]{64}$/.test(data.verificationId)
       || typeof data.expiresIn !== 'number' || !Number.isFinite(data.expiresIn) || data.expiresIn <= 0 || data.expiresIn > 3600
       || typeof data.resendAfter !== 'number' || !Number.isFinite(data.resendAfter) || data.resendAfter < 0 || data.resendAfter > 3600) {
     throw new Error('인증 메일 요청 결과를 확인하지 못했어요. 다시 요청해 주세요.')
   }
-  return data as EmailChallenge
+  const now = Date.now()
+  const updated = { ...registration, challenge: { id: data.verificationId,
+    expiresAt: Math.min(registration.expiresAt, now + data.expiresIn * 1000), resendAt: now + data.resendAfter * 1000 } }
+  saveRegistration(updated)
+  return updated
 }
-async function emailSession(path: string, body: object): Promise<AuthUser> {
+export async function verifyNaverSignup(code: string): Promise<{ user: AuthUser; returnTo: AppPage }> {
+  const registration = requireRegistration()
+  if (!registration.challenge || registration.challenge.expiresAt <= Date.now()) throw new Error('인증번호를 다시 받아 주세요.')
   try {
-    const data = await authRequest(path, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    const data = await authRequest('/api/auth/naver/verify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ registrationToken: registration.registrationToken, verificationId: registration.challenge.id, code }),
     }) as TokenPayload | null
-    return await acceptToken(data)
+    const user = await acceptToken(data)
+    clearNaverRegistration()
+    return { user, returnTo: registration.returnTo }
   } catch (error) {
-    logout()
+    session = null
+    removeStored(SESSION_KEY)
     if (error instanceof TypeError || (error instanceof Error && error.name === 'TimeoutError')) {
-      throw new Error('서버 응답을 확인하지 못했어요. 가입을 제출한 뒤라면 이메일 로그인도 확인해 주세요.')
+      throw new Error('서버 응답을 확인하지 못했어요. 인증을 제출한 뒤라면 네이버로 다시 로그인해 주세요.')
     }
     throw error
   }
-}
-export function loginWithEmail(email: string, password: string): Promise<AuthUser> {
-  return emailSession('/api/auth/login', { email: email.trim(), password })
-}
-export function signupWithEmail(email: string, password: string, name: string, verificationId: string, code: string): Promise<AuthUser> {
-  return emailSession('/api/auth/signup', { email: email.trim(), password, name: name.trim(), verificationId, code })
 }

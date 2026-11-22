@@ -30,10 +30,11 @@ test('landing exposes login and Login renders errors and a disabled checking sta
 })
 
 let scenario = 0
-async function withAuth(t, { query = '', pathname = '/', attempt, session, response } = {}, run) {
+async function withAuth(t, { query = '', pathname = '/', attempt, session, registration, response } = {}, run) {
   const storage = new Map()
   if (attempt) storage.set('gage-naver-attempt', JSON.stringify(attempt))
   if (session) storage.set('gage-auth-session', JSON.stringify(session))
+  if (registration) storage.set('gage-naver-registration', JSON.stringify(registration))
   const calls = []
   let cleanedUrl
   t.mock.method(globalThis, 'fetch', async (path, options) => {
@@ -155,55 +156,86 @@ test('backend configuration and account conflict errors remain actionable', asyn
   }
 })
 
-test('email verification does not store credentials or create a session', async (t) => {
-  await withAuth(t, { response: () => Response.json({ verificationId: 'a'.repeat(64), expiresIn: 600, resendAfter: 60 }) }, async ({ auth, calls, storage }) => {
-    const challenge = await auth.requestSignupCode(' owner@example.com ')
-    assert.equal(challenge.expiresIn, 600)
-    assert.equal(calls[0].path, '/api/auth/signup/email-code')
-    assert.deepEqual(JSON.parse(calls[0].options.body), { email: 'owner@example.com' })
-    assert.equal(storage.size, 0)
+
+const registration = () => ({ registrationToken: 'b'.repeat(64), email: 'naver@example.com', expiresAt: Date.now() + 1200000, returnTo: 'customer' })
+const challenged = () => ({ ...registration(), challenge: { id: 'a'.repeat(64), expiresAt: Date.now() + 600000, resendAt: Date.now() + 60000 } })
+
+test('new Naver callback enters verification without JWT or user lookup', async t => {
+  await withAuth(t, { pathname: '/api/auth/callback/naver', query: '?code=one-use&state=random-state', attempt: validAttempt(), response: () => Response.json({ verificationRequired: true, registrationToken: 'b'.repeat(64), email: 'naver@example.com', expiresIn: 1200 }) }, async ({ auth, calls, storage }) => {
+    assert.deepEqual(await auth.initializeAuth(), { user: null, returnTo: 'login' })
+    assert.equal(calls.length, 1)
+    assert.equal(auth.getNaverRegistration().returnTo, 'policy')
+    assert.equal(storage.has('gage-auth-session'), false)
+    assert.deepEqual(auth.getAuthHeaders(), {})
+    assert.doesNotMatch(JSON.stringify([...storage]), /one-use/)
+  })
+})
+
+test('verification email is bound to pending Naver identity, with no editable email payload', async t => {
+  await withAuth(t, { registration: registration(), response: () => Response.json({ verificationId: 'a'.repeat(64), expiresIn: 600, resendAfter: 60 }) }, async ({ auth, calls, storage }) => {
+    assert.deepEqual(await auth.initializeAuth(), { user: null })
+    const pending = await auth.requestNaverSignupCode()
+    assert.equal(pending.email, 'naver@example.com')
+    assert.equal(pending.challenge.id, 'a'.repeat(64))
+    assert.equal(calls[0].path, '/api/auth/naver/email-code')
+    assert.deepEqual(JSON.parse(calls[0].options.body), { registrationToken: 'b'.repeat(64) })
+    assert.equal(storage.has('gage-auth-session'), false)
     assert.deepEqual(auth.getAuthHeaders(), {})
   })
 })
 
-test('verified signup and email login verify the user before persisting a session', async (t) => {
-  for (const signup of [true, false]) {
-    await withAuth(t, { response: path => Response.json(path === '/api/users/me' ? { id: 42, name: '사장', email: 'owner@example.com' } : { accessToken: 'email-token', tokenType: 'Bearer', expiresIn: 3600 }) }, async ({ auth, calls, storage }) => {
-      const user = signup ? await auth.signupWithEmail('owner@example.com', 'password123!', ' 사장 ', 'a'.repeat(64), '123456') : await auth.loginWithEmail('owner@example.com', 'password123!')
-      assert.equal(user.id, 42)
-      assert.equal(calls[0].path, signup ? '/api/auth/signup' : '/api/auth/login')
-      assert.equal(calls[1].path, '/api/users/me')
-      assert.equal(calls[1].options.headers.Authorization, 'Bearer email-token')
-      if (signup) {
-        const body = JSON.parse(calls[0].options.body)
-        assert.equal(body.verificationId, 'a'.repeat(64))
-        assert.equal(body.code, '123456')
-        assert.equal(body.name, '사장')
-      }
-      const saved = JSON.parse(storage.get('gage-auth-session'))
-      assert.deepEqual(Object.keys(saved).sort(), ['accessToken', 'expiresAt'])
-      assert.doesNotMatch(JSON.stringify([...storage]), /password123|123456/)
-    })
-  }
+test('successful verification checks user and restores original destination', async t => {
+  await withAuth(t, { registration: challenged(), response: path => Response.json(path === '/api/users/me' ? { id: 42, name: '사장', email: 'naver@example.com' } : { accessToken: 'naver-token', tokenType: 'Bearer', expiresIn: 3600 }) }, async ({ auth, calls, storage }) => {
+    const result = await auth.verifyNaverSignup('123456')
+    assert.equal(result.user.id, 42)
+    assert.equal(result.returnTo, 'customer')
+    assert.deepEqual(calls.map(c => c.path), ['/api/auth/naver/verify', '/api/users/me'])
+    assert.deepEqual(JSON.parse(calls[0].options.body), { registrationToken: 'b'.repeat(64), verificationId: 'a'.repeat(64), code: '123456' })
+    assert.equal(calls[1].options.headers.Authorization, 'Bearer naver-token')
+    assert.equal(storage.has('gage-naver-registration'), false)
+    assert.equal(storage.has('gage-auth-session'), true)
+    assert.doesNotMatch(JSON.stringify([...storage]), /123456/)
+  })
 })
 
-test('email errors are actionable and never leave an authenticated session', async (t) => {
-  for (const [code, status, message] of [['INVALID_VERIFICATION', 400, /인증번호/], ['EMAIL_TAKEN', 409, /이미 가입/], ['SIGNUP_MAIL_UNAVAILABLE', 503, /메일/], ['LOGIN_RATE_LIMITED', 429, /15분/]]) {
-    await withAuth(t, { response: () => Response.json({ code, detail: 'private backend details' }, { status }) }, async ({ auth, storage }) => {
-      await assert.rejects(auth.signupWithEmail('owner@example.com', 'password123!', '사장', 'a'.repeat(64), '123456'), message)
-      assert.equal(storage.size, 0)
+test('invalid code permits retry without authenticating; expired registration is cleared', async t => {
+  for (const code of ['INVALID_VERIFICATION', 'NAVER_REGISTRATION_EXPIRED']) {
+    await withAuth(t, { registration: challenged(), response: () => Response.json({ code }, { status: 400 }) }, async ({ auth, storage }) => {
+      await assert.rejects(auth.verifyNaverSignup('123456'), /인증/)
+      assert.equal(storage.has('gage-auth-session'), false)
+      assert.equal(storage.has('gage-naver-registration'), code === 'INVALID_VERIFICATION')
       assert.deepEqual(auth.getAuthHeaders(), {})
     })
   }
 })
 
-test('bad proof responses and user lookup failures cannot authenticate email users', async (t) => {
-  await withAuth(t, { response: () => Response.json({ verificationId: 'short', expiresIn: 600, resendAfter: 60 }) }, async ({ auth }) => {
-    await assert.rejects(auth.requestSignupCode('owner@example.com'), /확인하지 못했어요/)
+test('expired pending identity and malformed mail responses fail closed', async t => {
+  await withAuth(t, { registration: { ...registration(), expiresAt: Date.now() - 1 } }, async ({ auth, calls, storage }) => {
+    await assert.rejects(auth.requestNaverSignupCode(), /만료/)
+    assert.equal(calls.length, 0)
+    assert.equal(storage.size, 0)
   })
-  await withAuth(t, { response: path => path === '/api/users/me' ? Response.json({ code: 'INVALID_CREDENTIALS' }, { status: 401 }) : Response.json({ accessToken: 'token', tokenType: 'Bearer', expiresIn: 600 }) }, async ({ auth, storage }) => {
-    await assert.rejects(auth.loginWithEmail('owner@example.com', 'password123!'))
+  await withAuth(t, { registration: registration(), response: () => Response.json({ verificationId: 'short', expiresIn: 600, resendAfter: 60 }) }, async ({ auth }) => {
+    await assert.rejects(auth.requestNaverSignupCode(), /확인하지 못했어요/)
+    assert.equal(auth.getNaverRegistration().challenge, undefined)
+  })
+})
+
+test('OTP token is discarded if user lookup fails; logout also clears registration', async t => {
+  await withAuth(t, { registration: challenged(), response: path => path === '/api/users/me' ? Response.json({}, { status: 401 }) : Response.json({ accessToken: 'token', tokenType: 'Bearer', expiresIn: 600 }) }, async ({ auth, storage }) => {
+    await assert.rejects(auth.verifyNaverSignup('123456'))
     assert.equal(storage.size, 0)
     assert.deepEqual(auth.getAuthHeaders(), {})
   })
+  await withAuth(t, { registration: challenged() }, async ({ auth, storage }) => {
+    auth.logout()
+    assert.equal(storage.size, 0)
+  })
+})
+
+test('login entry has only Naver authentication and no independent email or password fields', async () => {
+  const { default: Login } = await server.ssrLoadModule('/src/pages/Login.tsx')
+  const markup = renderToStaticMarkup(createElement(Login, { onBack() {}, returnTo: 'setup' }))
+  assert.match(markup, /네이버로 로그인/)
+  assert.doesNotMatch(markup, /type="(?:email|password)"|이메일로 로그인|회원가입하기/)
 })
