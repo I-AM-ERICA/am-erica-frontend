@@ -16,7 +16,7 @@ after(() => { globalThis.window = originalWindow; globalThis.localStorage = orig
 const { loadAccountSettings, saveStoreProfile, saveStaffPreference } = await server.ssrLoadModule('/src/services/account-settings.ts')
 const { resolveStore } = await server.ssrLoadModule('/src/services/policy-chat.ts')
 const preferences = { policy: 'boy', marketing: 'girl', customer: 'girl', sales: 'boy' }
-const profile = { id: 17, name: '오후의 커피', owner: '김사장', category: '카페', region: '지역 미설정' }
+const profile = { id: 17, name: '오후의 커피', owner: '김사장', category: '카페', region: '경기 안산시', ownerAge: 35, employeeCount: 0, monthlyRevenue: null }
 const data = { store: profile, staffPreferences: preferences }
 const signal = () => new AbortController().signal
 
@@ -24,13 +24,13 @@ test('selected postcode address and policy region round-trip through the account
   const selected = { ...profile, region: '경기 안산시 상록구', address: '경기 안산시 상록구 한양대학로 55' }
   globalThis.fetch = async (url, init) => {
     if (init.method === 'PUT') assert.deepEqual(JSON.parse(init.body), {
-      name: selected.name, owner: selected.owner, category: selected.category, region: selected.region, address: selected.address,
+      name: selected.name, owner: selected.owner, category: selected.category, region: selected.region, address: selected.address, ownerAge: 35, employeeCount: 0, monthlyRevenue: null,
     })
     return Response.json({ ...data, store: selected })
   }
   assert.equal((await saveStoreProfile(selected, signal())).store.address, selected.address)
   assert.equal((await loadAccountSettings(signal())).store.address, selected.address)
-  globalThis.fetch = async () => Response.json(data)
+  globalThis.fetch = async () => Response.json({ ...data, store: { ...profile, region: selected.region } })
   await assert.rejects(saveStoreProfile(selected, signal()), /주소 저장 결과/)
 })
 
@@ -63,7 +63,7 @@ test('profile save excludes client IDs and gender updates only send the selected
   }
   await saveStoreProfile({ ...profile, name: ' 오후의 커피 ' }, signal())
   assert.equal(calls[0][0], '/api/me/store-profile')
-  assert.deepEqual(JSON.parse(calls[0][1].body), { name: profile.name, owner: profile.owner, category: profile.category, region: profile.region })
+  assert.deepEqual(JSON.parse(calls[0][1].body), { name: profile.name, owner: profile.owner, category: profile.category, region: profile.region, ownerAge: 35, employeeCount: 0, monthlyRevenue: null })
   const result = await saveStaffPreference('customer', 'boy', signal())
   assert.equal(calls[1][0], '/api/me/staff-preferences/customer')
   assert.deepEqual(JSON.parse(calls[1][1].body), { gender: 'boy' })
@@ -143,4 +143,25 @@ test('initial setup and settings expose optional guidance, with saved account te
   assert.doesNotMatch(setup.match(/<textarea[^>]*>/)?.[0] ?? '', /required/)
   const settings = renderToStaticMarkup(createElement(Settings, { profile: { ...profile, storeInfo: '월요일 휴무' }, onSave: noop }))
   assert.match(settings, /월요일 휴무/)
+})
+
+
+test('required policy profile rejects missing values and preserves zero versus unknown revenue', async () => {
+  const { parsePolicyProfile, policyProfileDraft } = await server.ssrLoadModule('/src/services/policy-profile.ts')
+  const valid = { region: '경기 안산시', ownerAge: '35', employeeCount: '0', monthlyRevenue: '' }
+  assert.equal(parsePolicyProfile(valid).monthlyRevenue, null)
+  assert.equal(parsePolicyProfile({ ...valid, monthlyRevenue: '0' }).monthlyRevenue, 0)
+  for (const change of [{ region: '' }, { region: '지역 미설정' }, { ownerAge: '' }, { ownerAge: '121' }, { employeeCount: '' }, { employeeCount: '-1' }, { employeeCount: '1.5' }, { monthlyRevenue: '-1' }]) {
+    assert.throws(() => parsePolicyProfile({ ...valid, ...change }))
+  }
+  assert.equal(policyProfileDraft({ ...profile, ownerAge: null }).ownerAge, '')
+  for (const monthlyRevenue of [0, 1230000, null]) {
+    globalThis.fetch = async (_url, init) => {
+      assert.equal(JSON.parse(init.body).monthlyRevenue, monthlyRevenue)
+      return Response.json({ ...data, store: { ...profile, monthlyRevenue } })
+    }
+    assert.equal((await saveStoreProfile({ ...profile, monthlyRevenue }, signal())).store.monthlyRevenue, monthlyRevenue)
+  }
+  globalThis.fetch = async () => { throw new Error('invalid profile reached network') }
+  await assert.rejects(saveStoreProfile({ ...profile, ownerAge: null }, signal()), /나이/)
 })

@@ -1,0 +1,7 @@
+.policy-profile-fields { border: 0; padding: 0; margin: 28px 0 12px; min-width: 0; }
+.policy-profile-fields legend { font-size: 17px; font-weight: 700; color: var(--ink, #293d32); }
+.policy-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
+.policy-profile-grid label { display: flex; flex-wrap: wrap; gap: 6px; align-content: start; font-size: 14px; font-weight: 600; }
+.policy-profile-grid label span { font-weight: 400; color: #667660; }
+.policy-profile-grid input { width: 100%; min-width: 0; box-sizing: border-box; margin-top: 4px; }
+@media (max-width: 600px) { .policy-profile-grid { grid-template-columns: 1fr; } }

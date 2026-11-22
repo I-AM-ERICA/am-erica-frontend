@@ -18,6 +18,9 @@ export interface StoreProfile {
   owner: string
   category: string
   region: string
+  ownerAge?: number | null
+  employeeCount?: number | null
+  monthlyRevenue?: number | null
   storeInfo?: string | null
   address?: string | null
 }

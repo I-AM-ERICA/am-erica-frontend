@@ -2,6 +2,8 @@ import { ArrowLeft, ArrowRight, Check, Coffee, Flower2, Scissors, ShoppingBag, S
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { StoreProfile } from '../types'
+import PolicyProfileFields from '../components/PolicyProfileFields'
+import { policyProfileDraft, parsePolicyProfile } from '../services/policy-profile'
 import StoreInfoField from '../components/StoreInfoField'
 import { getStoreInfo, clearLegacyStoreInfo } from '../services/store-info'
 import './styles/business-setup.css'
@@ -21,6 +23,7 @@ export default function BusinessSetupPage({ profile, hasStore, onBack, onComplet
   const [category, setCategory] = useState(hasStore ? profile.category : '')
   const [name, setName] = useState(hasStore ? profile.name : '')
   const [storeInfo, setStoreInfo] = useState(hasStore ? getStoreInfo(profile) : '')
+  const [policyDraft, setPolicyDraft] = useState(() => policyProfileDraft(profile))
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const selected = categories.find((item) => item.name === category)
@@ -29,7 +32,7 @@ export default function BusinessSetupPage({ profile, hasStore, onBack, onComplet
     if (!selected || saving) return
     setSaving(true); setSaveError('')
     try {
-      await onComplete({ ...profile, storeInfo: storeInfo.trim(), category: selected.name, name: name.trim() || (hasStore ? profile.name : '우리 가게') })
+      await onComplete({ ...profile, ...parsePolicyProfile(policyDraft), storeInfo: storeInfo.trim(), category: selected.name, name: name.trim() || (hasStore ? profile.name : '우리 가게') })
       clearLegacyStoreInfo(profile)
     } catch (error) { setSaveError(error instanceof Error && error.name !== 'TypeError' ? error.message : '가게 정보를 저장하지 못했어요. 다시 시도해 주세요.') }
     finally { setSaving(false) }
@@ -44,6 +47,7 @@ export default function BusinessSetupPage({ profile, hasStore, onBack, onComplet
       <fieldset className="business-options" disabled={saving}><legend className="visually-hidden">가게 업종 선택</legend>{categories.map(({ name: option, icon: Icon }) => <label className={`business-option ${category === option ? 'selected' : ''}`} key={option}><input type="radio" name="business-category" value={option} checked={category === option} onChange={() => setCategory(option)} /><Icon size={20} /><span>{option}</span>{category === option && <Check size={17} className="option-check" />}</label>)}</fieldset>
       <label className="business-name-label" htmlFor="business-name">가게 이름 <span>선택</span></label>
       <input id="business-name" disabled={saving} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="예: 오후의 커피" />
+      <PolicyProfileFields value={policyDraft} onChange={setPolicyDraft} disabled={saving} />
       <StoreInfoField value={storeInfo} onChange={setStoreInfo} disabled={saving} />
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <button className="setup-continue" type="submit" disabled={!selected || saving}>{saving ? '계정에 저장 중' : '선택하고 비서 만나기'}<ArrowRight size={19} /></button>
