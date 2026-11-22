@@ -1,18 +1,22 @@
 import { ArrowLeft, ArrowRight, BarChart3, CalendarDays, Check, ChevronRight, LoaderCircle, Plus, Save, Trash2, TrendingUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { loadManagementSales } from '../services/managementApi'
+import ManagementPlanner from '../components/ManagementPlanner'
+import type { AuthUser } from '../services/auth'
 import StaffAvatar from '../components/StaffAvatar'
 import { predictSales, shiftDate, todayInSeoul, validateSales } from '../services/sales'
 import type { SalesForecast, SalesInput, SalesPredictor } from '../services/sales'
 import type { Activity, StoreProfile } from '../types'
 import './styles/sales.css'
 
-interface Props { profile: StoreProfile; onBack: () => void; onSave: (activity: Activity) => void; onToast: (message: string) => void; onPredict?: SalesPredictor }
+interface Props { user?: AuthUser | null; profile: StoreProfile; onBack: () => void; onSave: (activity: Activity) => void; onToast: (message: string) => void; onPredict?: SalesPredictor }
 interface InputRow extends SalesInput { key: number }
 const won = (value: number) => `${Math.round(value).toLocaleString('ko-KR')}원`
 const shortDate = (value: string) => `${Number(value.slice(5, 7))}/${Number(value.slice(8))}`
 
-export default function SalesPage({ profile, onBack, onSave, onToast, onPredict = predictSales }: Props) {
+export default function SalesPage({ user, profile, onBack, onSave, onToast, onPredict = predictSales }: Props) {
+  const [mode, setMode] = useState<'forecast' | 'plan'>('forecast')
   const [rows, setRows] = useState<InputRow[]>(() => [{ key: 0, date: shiftDate(todayInSeoul(), -1), amount: '' }])
   const nextKey = useRef(1)
   const [horizon, setHorizon] = useState(1)
@@ -50,6 +54,20 @@ export default function SalesPage({ profile, onBack, onSave, onToast, onPredict 
       if (mounted.current) setError(cancelled.current ? '예측을 취소했어요. 입력 내용은 그대로 남아 있어요.' : timedOut ? '예측 시간이 초과됐어요. 다시 시도해 주세요.' : cause instanceof Error && cause.name !== 'TypeError' ? cause.message : '경영 비서 서버에 연결하지 못했어요.')
     } finally { window.clearTimeout(timeout); request.current = null; if (mounted.current) setBusy(false) }
   }
+  const loadSales = async () => {
+    if (!profile.id || request.current) return
+    if (rows.some(row => row.amount !== '') && !window.confirm('입력한 매출을 서버에 저장된 매출로 바꿀까요?')) return
+    const controller = new AbortController(); request.current = controller; setBusy(true); setError('')
+    const timer = window.setTimeout(() => controller.abort(), 20000)
+    try {
+      const history = await loadManagementSales(profile.id, controller.signal)
+      if (mounted.current && !controller.signal.aborted) {
+        if (!history.length) { onToast('아직 저장된 매출이 없어요.'); return }
+        setRows(history.map(p => ({ key: nextKey.current++, date: p.date, amount: String(p.amount) }))); resetResult()
+      }
+    } catch (cause) { if (mounted.current) setError(cause instanceof Error && cause.name !== 'AbortError' ? cause.message : '매출 불러오기를 완료하지 못했어요.') }
+    finally { window.clearTimeout(timer); request.current = null; if (mounted.current) setBusy(false) }
+  }
   const save = () => {
     if (!result || saved) return
     onSave({ id: crypto.randomUUID(), assistant: 'sales', title: `${result.points[0].date}부터 ${result.points.length}일 매출 예측`,
@@ -61,13 +79,17 @@ export default function SalesPage({ profile, onBack, onSave, onToast, onPredict 
   const max = result ? Math.max(1, ...result.points.map((item) => item.upper)) : 1
   return <main className="sales-page">
     <button className="sales-back" onClick={onBack}><ArrowLeft size={16} /> 대시보드로</button>
-    <header className="sales-heading"><StaffAvatar id="sales" /><div><p>경영 비서</p><h1>우리 가게, 다음 매출은?</h1><span>일별 매출을 입력하면 앞으로의 매출 흐름을 예측해 드려요.</span></div></header>
+    <header className="sales-heading"><StaffAvatar id="sales" /><div><p>경영 비서</p><h1>매출부터 운영까지, 한눈에</h1><span>매출을 예측하고, 직원 근무표와 매달 나가는 비용을 함께 관리해요.</span></div></header>
+    <div className="sales-mode" role="group" aria-label="경영 비서 메뉴"><button type="button" aria-pressed={mode === 'forecast'} onClick={() => setMode('forecast')}>매출 예측</button><button type="button" aria-pressed={mode === 'plan'} onClick={() => setMode('plan')}>직원 · 비용 · 월간 보고서</button></div>
+    <div hidden={mode !== 'plan'}><ManagementPlanner key={`${user?.id}:${profile.id}`} user={user} storeId={profile.id} storeName={profile.name} forecast={result} onToast={onToast} onForecast={() => setMode('forecast')} /></div>
+    <div hidden={mode !== 'forecast'}>
     <div className="sales-steps"><span><b>1</b> 실제 매출 입력</span><ChevronRight size={14} /><span><b>2</b> 예측 기간 선택</span><ChevronRight size={14} /><span><b>3</b> 예상 매출 확인</span></div>
     <div className="sales-workspace">
       <form className="sales-panel sales-form" onSubmit={submit}>
         <div className="sales-section-title"><h2>우리 가게 매출</h2><span>{rows.length}일 입력</span></div>
-        <p className="sales-help">하루치부터 시작할 수 있어요. 해당 날짜의 총매출을 원 단위로 입력해 주세요.</p>
+        <p className="sales-help">날짜별 총매출을 입력해 주세요. 예측 시 매출을 계정에 저장하며, 월간 메일의 예상 매출 계산에도 사용합니다.</p>
         <fieldset disabled={busy} className="sales-fields">
+          <button type="button" className="sales-add" disabled={!profile.id} onClick={loadSales}>저장한 매출 불러오기</button>
           <div className="sales-input-head" aria-hidden="true"><span>매출 날짜</span><span>일매출 (원)</span><span /></div>
           <div className="sales-input-list">{rows.map((row, index) => <div className="sales-input-row" key={row.key}>
             <input aria-label={`${index + 1}행 매출 날짜`} type="date" value={row.date} max={todayInSeoul()} required onChange={(event) => update(row.key, 'date', event.target.value)} />
@@ -78,10 +100,10 @@ export default function SalesPage({ profile, onBack, onSave, onToast, onPredict 
           <p className="sales-help">빠진 날짜 없이 입력해 주세요. 휴무일은 0원으로 입력하면 됩니다.</p>
           <label className="sales-label" htmlFor="sales-horizon">얼마나 앞을 예측할까요?</label>
           <select id="sales-horizon" value={horizon} onChange={(event) => { setHorizon(Number(event.target.value)); resetResult() }}>
-            <option value={1}>다음 날</option><option value={7}>다음 7일</option><option value={14}>다음 14일</option>
+            <option value={1}>다음 날</option><option value={7}>다음 7일</option><option value={14}>다음 14일</option><option value={30}>다음 30일</option>
           </select>
           <p className="sales-help">마지막으로 입력한 매출일의 다음 날부터 예측합니다.</p>
-          <button className="sales-submit" type="submit" disabled={!profile.id}>{busy ? <><LoaderCircle className="sales-spin" size={18} /> 매출 예측 중…</> : <>매출 예측하기 <ArrowRight size={17} /></>}</button>
+          <button className="sales-submit" type="submit" disabled={!profile.id}>{busy ? <><LoaderCircle className="sales-spin" size={18} /> 매출 예측 중…</> : <>매출 저장하고 예측 <ArrowRight size={17} /></>}</button>
         </fieldset>
         {busy && <button type="button" className="sales-cancel" onClick={() => { cancelled.current = true; request.current?.abort() }}>예측 취소</button>}
         {!profile.id && <p className="sales-help">가게 정보를 먼저 저장해 주세요.</p>}
@@ -90,7 +112,7 @@ export default function SalesPage({ profile, onBack, onSave, onToast, onPredict 
       </form>
       <section className="sales-panel sales-results" aria-live="polite" aria-busy={busy}>
         <div className="sales-section-title"><h2>예상 매출</h2><span className="sales-model">Chronos</span></div>
-        {!result || !point ? <div className="sales-empty">{busy ? <LoaderCircle size={40} className="sales-spin" /> : <BarChart3 size={44} />}<h3>{busy ? '매출 흐름을 살펴보고 있어요' : '다가올 매출을 미리 살펴보세요'}</h3><p>{busy ? '입력한 매출로 예상 금액과 범위를 계산합니다.' : '왼쪽에 날짜와 매출을 입력하고\n매출 예측하기를 눌러 주세요.'}</p></div> : <>
+        {!result || !point ? <div className="sales-empty">{busy ? <LoaderCircle size={40} className="sales-spin" /> : <BarChart3 size={44} />}<h3>{busy ? '매출 흐름을 살펴보고 있어요' : '다가올 매출을 미리 살펴보세요'}</h3><p>{busy ? '입력한 매출로 예상 금액과 범위를 계산합니다.' : '왼쪽에 날짜와 매출을 입력하고\n매출 저장하고 예측를 눌러 주세요.'}</p></div> : <>
           <div className="sales-result-meta">실제 매출 {result.historyDays}일 사용 · {result.points.length}일 예측</div>
           <div className="sales-amount-card"><span>{point.date} 예상 매출</span><strong>{won(point.predicted)}</strong><p>예측 범위 <b>{won(point.lower)} ~ {won(point.upper)}</b></p></div>
           <p className="sales-summary">{result.summary}</p>
@@ -104,5 +126,6 @@ export default function SalesPage({ profile, onBack, onSave, onToast, onPredict 
       </section>
     </div>
     <aside className="sales-explanation"><TrendingUp size={19} /><div><strong>어떤 정보로 예측하나요?</strong><p>입력한 일별 매출의 흐름을 사용합니다. 날씨·행사·업종·비용은 반영하지 않으며, 순이익이나 시간대별 피크타임을 예측하는 기능은 아닙니다. 현재 모델은 영국 소매업체 매출로 학습되어 우리 매장에서는 참고용으로 활용해 주세요.</p></div></aside>
+    </div>
   </main>
 }

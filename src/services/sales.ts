@@ -1,3 +1,4 @@
+import { saveManagementSales } from './managementApi'
 import { apiFetch } from './api'
 import { getAuthHeaders, logout } from './auth'
 import type { StoreProfile } from '../types'
@@ -54,6 +55,7 @@ export function parseSalesForecast(value: unknown, history: SalesPoint[], horizo
 }
 export const predictSales: SalesPredictor = async (history, horizonDays, profile, signal) => {
   if (!Number.isSafeInteger(profile.id) || profile.id! <= 0) throw new Error('가게 정보를 먼저 저장해 주세요.')
+  await saveManagementSales(profile.id!, history, signal)
   const response = await apiFetch(`/api/stores/${profile.id}/ai/management/forecast`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ history, horizonDays }), signal,

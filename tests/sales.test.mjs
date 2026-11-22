@@ -30,15 +30,18 @@ test('rejects mocks, wrong dates, missing points, invalid ranges and history cou
 })
 test('prediction goes through the store backend with typed daily values, never CSV', async () => {
   const original = globalThis.fetch
-  let sent
-  globalThis.fetch = async (url, init) => { sent = { url, init }; return Response.json(forecast) }
+  const sent = []
+  globalThis.fetch = async (url, init) => { sent.push({ url, init }); return Response.json(forecast) }
   try {
     const result = await predictSales(history, 1, { id: 42 }, new AbortController().signal)
     assert.equal(result.model, 'chronos-t5-small')
-    assert.equal(sent.url, '/api/stores/42/ai/management/forecast')
-    assert.deepEqual(JSON.parse(sent.init.body), { history, horizonDays: 1 })
+    assert.equal(sent[0].url, '/api/stores/42/management/sales')
+    assert.deepEqual(JSON.parse(sent[0].init.body), { history })
+    assert.equal(sent.length, 2)
+    assert.equal(sent.at(-1).url, '/api/stores/42/ai/management/forecast')
+    assert.deepEqual(JSON.parse(sent.at(-1).init.body), { history, horizonDays: 1 })
     globalThis.fetch = async () => new Response('{}', { status: 503 })
-    await assert.rejects(predictSales(history, 1, { id: 42 }, new AbortController().signal), /연결하지/)
+    await assert.rejects(predictSales(history, 1, { id: 42 }, new AbortController().signal), /경영 정보를/)
   } finally { globalThis.fetch = original }
 })
 test('sales screen offers daily input and horizon selection without file uploads', async () => {
@@ -48,6 +51,6 @@ test('sales screen offers daily input and horizon selection without file uploads
   assert.match(html, /type="date"/)
   assert.match(html, /일매출 \(원\)/)
   assert.match(html, /다음 날/)
-  assert.match(html, /매출 예측하기/)
+  assert.match(html, /매출 저장하고 예측/)
   assert.doesNotMatch(html, /type="file"/)
 })
