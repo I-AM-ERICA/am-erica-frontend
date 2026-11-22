@@ -1,6 +1,6 @@
-export default function CustomerReplyOptions({ rating, storeInfo, requiredReplyText, disabled, onRating, onStoreInfo, onRequiredReplyText }: {
+export default function CustomerReplyOptions({ rating, storeInfo, requiredReplyText, disabled, onRating, onRequiredReplyText }: {
   rating: number; storeInfo: string; requiredReplyText: string; disabled: boolean
-  onRating: (rating: number) => void; onStoreInfo: (storeInfo: string) => void
+  onRating: (rating: number) => void
   onRequiredReplyText: (value: string) => void
 }) {
   return <><div className="customer-reply-options">
@@ -14,11 +14,7 @@ export default function CustomerReplyOptions({ rating, storeInfo, requiredReplyT
     </div>
   </div>
   <div className="customer-store-info">
-    <label htmlFor="store-info">가게 정보 <span>선택</span></label>
-    <textarea id="store-info" value={storeInfo} maxLength={2000} rows={4} disabled={disabled}
-      placeholder={'예: 누락·오배송은 배달앱 고객센터나 매장 전화로 알려 주시면 확인 후 다시 보내 드림\n영업 11:00~21:00, 월요일 휴무'}
-      onChange={event => onStoreInfo(event.target.value)} />
-    <p className="input-caption">배달·환불·연락 안내, 영업시간, 진행 중인 이벤트처럼 답글에 쓸 가게 정보를 한 줄에 하나씩 적어 주세요. 리뷰와 관련된 내용을 찾아 답글 작성에 참고해요. 이 브라우저에 가게별로 저장돼요.</p>
+    <p className="input-caption">{storeInfo.trim() ? '저장된 가게 정보를 답글 작성에 참고해요.' : '영업시간이나 배달 안내를 저장하면 답글 작성에 참고해요.'} <a href="#settings">가게 정보 설정하기</a></p>
     <label htmlFor="required-reply-text">모든 답글에 넣을 문장 <span>선택</span></label>
     <input id="required-reply-text" type="text" value={requiredReplyText}
       maxLength={2000 - '필수: '.length} disabled={disabled}

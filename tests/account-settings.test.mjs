@@ -101,3 +101,46 @@ test('setup and settings explain account persistence and staff buttons disable d
   const dashboard = renderToStaticMarkup(createElement(Dashboard, { profile, activities: [], onNavigate: noop, onActivity: noop, onGuide: noop, onStaffGenderChange: noop, staffSaving: true }))
   assert.equal((dashboard.match(/disabled="" aria-pressed=/g) || []).length, 8)
 })
+
+test('optional store guidance round-trips, trims, clears and detects outdated servers', async () => {
+  for (const guide of ['  월요일 휴무\n배달앱으로 연락 주세요.  ', '가'.repeat(2000), '']) {
+    globalThis.fetch = async (_url, init) => {
+      if (init.method === 'PUT') assert.equal(JSON.parse(init.body).storeInfo, guide.trim())
+      return Response.json({ ...data, store: { ...profile, storeInfo: guide.trim() } })
+    }
+    assert.equal((await saveStoreProfile({ ...profile, storeInfo: guide }, signal())).store.storeInfo, guide.trim())
+    assert.equal((await loadAccountSettings(signal())).store.storeInfo, guide.trim())
+  }
+  globalThis.fetch = async () => { throw new Error('Invalid data must not reach API') }
+  await assert.rejects(saveStoreProfile({ ...profile, storeInfo: '가'.repeat(2001) }, signal()), /2,000자/)
+  globalThis.fetch = async () => Response.json(data)
+  await assert.rejects(saveStoreProfile({ ...profile, storeInfo: '' }, signal()), /가게 안내 저장 결과/)
+})
+
+test('legacy guidance is isolated by store and never resurrects after an explicit clear', async () => {
+  const { getStoreInfo, clearLegacyStoreInfo } = await server.ssrLoadModule('/src/services/store-info.ts')
+  const savedStorage = globalThis.localStorage
+  const entries = new Map([['gage-customer-store-info-17', '기존 안내']])
+  globalThis.localStorage = { getItem: key => entries.get(key) ?? null, removeItem: key => entries.delete(key) }
+  try {
+    assert.equal(getStoreInfo(profile), '기존 안내')
+    assert.equal(getStoreInfo({ ...profile, id: 18 }), '')
+    assert.equal(getStoreInfo({ ...profile, id: undefined }), '')
+    assert.equal(getStoreInfo({ ...profile, storeInfo: '' }), '')
+    assert.equal(getStoreInfo({ ...profile, storeInfo: '계정 안내' }), '계정 안내')
+    clearLegacyStoreInfo(profile)
+    assert.equal(getStoreInfo(profile), '')
+  } finally { globalThis.localStorage = savedStorage }
+})
+
+test('initial setup and settings expose optional guidance, with saved account text in settings', async () => {
+  const { default: Setup } = await server.ssrLoadModule('/src/pages/BusinessSetupPage.tsx')
+  const { default: Settings } = await server.ssrLoadModule('/src/pages/SettingsPage.tsx')
+  const noop = () => {}
+  const setup = renderToStaticMarkup(createElement(Setup, { profile, hasStore: false, onBack: noop, onComplete: noop }))
+  assert.match(setup, /답글에 참고할 가게 정보/)
+  assert.match(setup, /지금은 건너뛰고/)
+  assert.doesNotMatch(setup.match(/<textarea[^>]*>/)?.[0] ?? '', /required/)
+  const settings = renderToStaticMarkup(createElement(Settings, { profile: { ...profile, storeInfo: '월요일 휴무' }, onSave: noop }))
+  assert.match(settings, /월요일 휴무/)
+})

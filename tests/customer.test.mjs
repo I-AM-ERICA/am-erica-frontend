@@ -95,11 +95,12 @@ test('store info is sent only when written, trimmed, and limited to 2,000 charac
     await assert.rejects(runAssistant('customer', { ...request, storeInfo: 42 }), /가게 정보는 텍스트/)
   } finally { globalThis.fetch = original }
 })
-test('customer screen has a store info box that the browser remembers', async () => {
+test('customer screen links to store settings instead of editing the guide', async () => {
   const { default: AssistantPage } = await server.ssrLoadModule('/src/pages/AssistantPage.tsx')
   const noop = () => {}
   const html = renderToStaticMarkup(createElement(AssistantPage, { id: 'customer', profile, onBack: noop, onSave: noop, onToast: noop }))
-  assert.match(html, /id="store-info"[^>]*maxLength="2000"/)
+  assert.doesNotMatch(html, /id="store-info"/)
+  assert.match(html, /href="#settings"/)
   assert.match(html, /이 브라우저에 가게별로 저장/)
 })
 test('metadata is optional and malformed fields do not break a usable reply', async () => {
