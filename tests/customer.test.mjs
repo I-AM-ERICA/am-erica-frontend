@@ -53,7 +53,8 @@ test('customer screen describes real generation and server transmission', async 
   assert.match(html, /id="review-rating"/)
   assert.match(html, /value="0" selected=""/)
   for (let rating = 1; rating <= 5; rating++) assert.match(html, new RegExp(`value="${rating}"`))
-  assert.match(html, /id="reply-tone"[^>]*maxLength="30"/)
+  assert.doesNotMatch(html, /id="reply-tone"/)
+  assert.match(html, /id="required-reply-text"[^>]*maxLength="1996"/)
   assert.match(html, /모름 \/ 선택 안 함/)
   assert.doesNotMatch(html, /예시 문안으로 체험|브라우저에만 보관/)
 })
@@ -79,6 +80,27 @@ test('invalid ratings and overlong tone are rejected before sending', async () =
     for (const rating of [-1, 6, 1.5, NaN, '5']) await assert.rejects(runAssistant('customer', { ...request, rating }), /별점/)
     for (const tone of ['가'.repeat(31), 42]) await assert.rejects(runAssistant('customer', { ...request, tone }), /말투/)
   } finally { globalThis.fetch = original }
+})
+test('store info is sent only when written, trimmed, and limited to 2,000 characters', async () => {
+  const original = globalThis.fetch
+  let sent
+  globalThis.fetch = async (_url, init) => { sent = JSON.parse(init.body); return Response.json({ reply: '답글' }) }
+  try {
+    await runAssistant('customer', { ...request, storeInfo: '  메뉴: 떡볶이, 김밥\n월요일 휴무  ' })
+    assert.equal(sent.storeInfo, '메뉴: 떡볶이, 김밥\n월요일 휴무')
+    await runAssistant('customer', { ...request, storeInfo: '   ' })
+    assert.equal('storeInfo' in sent, false)
+    globalThis.fetch = () => { throw new Error('must not fetch') }
+    await assert.rejects(runAssistant('customer', { ...request, storeInfo: '가'.repeat(2001) }), /가게 정보는 2,000자/)
+    await assert.rejects(runAssistant('customer', { ...request, storeInfo: 42 }), /가게 정보는 텍스트/)
+  } finally { globalThis.fetch = original }
+})
+test('customer screen has a store info box that the browser remembers', async () => {
+  const { default: AssistantPage } = await server.ssrLoadModule('/src/pages/AssistantPage.tsx')
+  const noop = () => {}
+  const html = renderToStaticMarkup(createElement(AssistantPage, { id: 'customer', profile, onBack: noop, onSave: noop, onToast: noop }))
+  assert.match(html, /id="store-info"[^>]*maxLength="2000"/)
+  assert.match(html, /이 브라우저에 가게별로 저장/)
 })
 test('metadata is optional and malformed fields do not break a usable reply', async () => {
   const original = globalThis.fetch
