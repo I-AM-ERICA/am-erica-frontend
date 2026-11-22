@@ -23,5 +23,10 @@ export interface StoreProfile {
 
 export interface AssistantResult {
   text: string
+  customer?: {
+    rating: number
+    sentiment?: 'positive' | 'neutral' | 'negative'
+    keywords: string[]
+  }
   sources?: { title: string; url: string }[]
 }

@@ -7,6 +7,8 @@ export const isLiveMode = import.meta.env.VITE_API_MODE === 'live'
 
 export interface AssistantRequest {
   message: string
+  rating?: number
+  tone?: string
   format: string
   profile: StoreProfile
 }
@@ -63,7 +65,7 @@ function demoResult(id: AssistantId, request: AssistantRequest): AssistantResult
 }
 
 export async function runAssistant(id: AssistantId, request: AssistantRequest, signal?: AbortSignal): Promise<AssistantResult> {
-  if (id === 'customer') return draftCustomerReply(request.message, request.profile, signal)
+  if (id === 'customer') return draftCustomerReply(request.message, request.profile, signal, { rating: request.rating, tone: request.tone })
   if (!isLiveMode) return demoResult(id, request)
   const response = await apiFetch(`/api/assistants/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(request), signal })
   if (response.status === 401) { logout(); throw new Error('로그인이 만료되었어요. 다시 로그인해 주세요.') }
